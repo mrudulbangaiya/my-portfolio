@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority"
 
 import { cn } from "@/utils"
+import { useCursor } from "@/context/CursorContext"
 
 const buttonVariants = cva(
     "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
@@ -35,10 +36,33 @@ const buttonVariants = cva(
 
 const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const { setCursorVariant, setButtonSize } = useCursor()
+
+    const handleMouseEnter = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setButtonSize({
+            width: rect.width,
+            height: rect.height,
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+            borderRadius: getComputedStyle(e.currentTarget).borderRadius
+        })
+        setCursorVariant('button')
+        props.onMouseEnter?.(e)
+    }
+
+    const handleMouseLeave = (e) => {
+        setCursorVariant('default')
+        setButtonSize(null)
+        props.onMouseLeave?.(e)
+    }
+
     return (
         <Comp
             className={cn(buttonVariants({ variant, size, className }))}
             ref={ref}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             {...props}
         />
     )
