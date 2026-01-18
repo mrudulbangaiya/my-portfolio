@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button" // Keep for fallback if needed, 
 import { MagneticButton } from "@/components/common/MagneticButton"
 import { profile } from "@/data/profile"
 import { fadeIn, slideUp, staggerContainer } from "@/utils/animations"
-import { ArrowDown } from "lucide-react"
+import { ArrowDown, Sun, Moon, Globe } from "lucide-react"
 import ParticleCanvas from "@/components/canvas/ParticleCanvas"
 import { useCursor } from "@/context/CursorContext"
+import { useTheme } from "@/context/ThemeContext"
 
 export default function Hero() {
-    const [hoverState, setHoverState] = useState('none')
+    const [hoverState, setHoverState] = useState('sphere')
     const { setCursorVariant } = useCursor()
+    const { themeMode, setThemeMode } = useTheme()
 
     const handleTextHover = (type) => { // type: 'MB' | 'WD'
         // Trigger Particle
@@ -20,35 +22,70 @@ export default function Hero() {
         setCursorVariant('text')
     }
 
+    const handleSimpleHover = () => {
+        setCursorVariant('text')
+    }
+
     const handleTextLeave = () => {
-        setHoverState('none')
+        setHoverState('sphere')
         setCursorVariant('default')
     }
 
     return (
-        <section className="relative h-screen w-full flex flex-col justify-center items-center px-4 overflow-hidden bg-background text-foreground">
+        <section className="relative h-screen w-full overflow-hidden bg-background text-foreground grid grid-cols-1 lg:grid-cols-2">
 
-            {/* 1. Background Particles (Interactive Canvas) */}
+            {/* Theme Toggle - Top Right */}
+            <div className="absolute top-6 right-6 z-50 flex items-center gap-1 bg-background/50 backdrop-blur-md p-1 rounded-full border border-border/50 shadow-sm pointer-events-auto">
+                <button
+                    onClick={() => setThemeMode('light')}
+                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'light' ? 'bg-background shadow-sm text-yellow-500 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Light Mode"
+                >
+                    <Sun className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={() => setThemeMode('auto')}
+                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'auto' ? 'bg-background shadow-sm text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Auto (Dynamic)"
+                >
+                    <Globe className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={() => setThemeMode('dark')}
+                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'dark' ? 'bg-background shadow-sm text-indigo-400 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Dark Mode"
+                >
+                    <Moon className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* 1. Background Particles (Full Screen Absolute, but visual centered on right via Canvas logic) */}
             <ParticleCanvas targetShape={hoverState} />
 
-            {/* 2. Main Content (Z-Index 10 to stay above particles) */}
+            {/* 2. Left Column: Main Content */}
             <motion.div
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
-                className="max-w-6xl w-full text-center space-y-12 z-10 relative pointer-events-none" // pointer-events-none on container so it doesn't block hover
+                className="flex flex-col justify-center px-8 md:px-16 lg:pl-24 z-10 relative pointer-events-none h-full"
             >
 
-                <div className="space-y-8 flex flex-col items-center z-10">
+                <div className="space-y-6 flex flex-col items-center lg:items-start z-10">
 
                     {/* Main Title Group */}
-                    <div className="flex flex-col items-center gap-0 md:gap-2 pointer-events-auto">
+                    <div className="flex flex-col items-center lg:items-start z-10 w-full pointer-events-auto">
 
-                        {/* Row 1: Greeting + Name */}
-                        <motion.div variants={slideUp} className="flex flex-col md:flex-row items-baseline gap-2 md:gap-4 text-center md:text-left">
-                            <span className="font-sans font-light text-2xl md:text-4xl text-muted-foreground/80">👋 Hey, I'm</span>
+                        {/* Line 1: Hey, I'm Mrudul Bangaiya */}
+                        <motion.div variants={slideUp} className="flex flex-wrap lg:flex-nowrap items-baseline justify-center lg:justify-start gap-x-4 gap-y-1 text-center lg:text-left w-full pl-2">
+                            <span
+                                className="font-sans font-light text-2xl md:text-3xl lg:text-4xl text-muted-foreground/80 whitespace-nowrap cursor-pointer hover:text-foreground transition-colors"
+                                onMouseEnter={handleSimpleHover}
+                                onMouseLeave={handleTextLeave}
+                            >
+                                👋 Hey, I'm
+                            </span>
                             <h1
-                                className="font-serif text-5xl md:text-8xl font-medium tracking-tight text-foreground hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-neutral-200 hover:to-neutral-500 transition-all duration-300 cursor-pointer"
+                                className="font-accent text-6xl md:text-8xl lg:text-9xl font-normal tracking-wide text-foreground hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-neutral-200 hover:to-neutral-500 transition-all duration-300 cursor-pointer whitespace-nowrap pb-2"
                                 onMouseEnter={() => handleTextHover('MB')}
                                 onMouseLeave={handleTextLeave}
                             >
@@ -56,37 +93,39 @@ export default function Hero() {
                             </h1>
                         </motion.div>
 
-                        {/* Row 2: & I'm a creative Web Developer */}
-                        <motion.div variants={slideUp} className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
-                            <span className="font-sans font-light text-2xl md:text-4xl text-muted-foreground/80">& I'm a</span>
+                        {/* Line 2: A Creative Web Developer. */}
+                        <motion.div variants={slideUp} className="flex flex-wrap lg:flex-nowrap items-baseline justify-center lg:justify-start gap-x-3 gap-y-1 -mt-2 w-full">
+                            <span
+                                className="font-sans font-light text-2xl md:text-3xl lg:text-4xl text-muted-foreground/80 whitespace-nowrap cursor-pointer hover:text-foreground transition-colors"
+                                onMouseEnter={handleSimpleHover}
+                                onMouseLeave={handleTextLeave}
+                            >
+                                A Creative
+                            </span>
 
-                            <div className="flex items-baseline gap-3">
-                                {/* Rotated Creative Text */}
-                                {/* "Creative" with split typography */}
-                                <div className="relative inline-flex items-baseline">
-                                    <span className="font-accent text-5xl md:text-7xl text-accent-foreground">C</span>
-                                    <span className="font-accent text-5xl md:text-7xl text-accent-foreground transform -rotate-12 -translate-y-2 origin-bottom-left inline-block">reative</span>
-                                </div>
-
-                                <h2
-                                    className="font-sans text-5xl md:text-8xl font-black tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-b from-neutral-100 to-neutral-500 cursor-pointer hover:scale-105 transition-transform duration-300"
-                                    onMouseEnter={() => handleTextHover('WD')}
-                                    onMouseLeave={handleTextLeave}
-                                >
-                                    Web Developer.
-                                </h2>
-                            </div>
+                            <h2
+                                className="font-sans text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-b from-neutral-100 to-neutral-500 cursor-pointer hover:scale-105 transition-transform duration-300 whitespace-nowrap"
+                                onMouseEnter={() => handleTextHover('WD')}
+                                onMouseLeave={handleTextLeave}
+                            >
+                                Web Developer.
+                            </h2>
                         </motion.div>
                     </div>
 
-                    {/* Restored Description/Tagline */}
-                    <motion.p variants={fadeIn} className="font-sans text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed text-center">
+                    {/* Description/Tagline */}
+                    <motion.p
+                        variants={fadeIn}
+                        className="font-sans text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed text-center lg:text-left pointer-events-auto cursor-pointer"
+                        onMouseEnter={handleSimpleHover}
+                        onMouseLeave={handleTextLeave}
+                    >
                         {profile.tagline} Crafting pixel-perfect, interactive, and premium web experiences.
                     </motion.p>
                 </div>
 
                 {/* Buttons */}
-                <motion.div variants={slideUp} className="flex flex-col sm:flex-row gap-6 justify-center pt-8 pointer-events-auto">
+                <motion.div variants={slideUp} className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start pt-8 pointer-events-auto w-full">
                     <Button size="lg" className="h-14 px-10 text-lg rounded-full shadow-lg hover:shadow-primary/20 transition-all duration-300">
                         View My Projects
                     </Button>
@@ -97,7 +136,12 @@ export default function Hero() {
 
             </motion.div>
 
-            {/* Scroll Indicator */}
+            {/* Right Column: Empty (Space for Particles) */}
+            <div className="hidden lg:block h-full z-0 pointer-events-none">
+                {/* The canvas sits behind everything, but visually occupies this space */}
+            </div>
+
+            {/* Scroll Indicator - Centered Absolute */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -110,7 +154,6 @@ export default function Hero() {
                 </div>
             </motion.div>
 
-        </section >
+        </section>
     )
 }
-

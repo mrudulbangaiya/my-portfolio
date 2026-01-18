@@ -1,87 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Tangerine:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Dynamic Font Variables */
-    --font-sans: "Manrope", sans-serif;
-    --font-serif: "Playfair Display", serif;
-    --font-accent: "Tangerine", cursive;
+    /* Fonts */
+    --font-sans: 'Manrope', sans-serif;
+    --font-serif: 'Playfair Display', serif;
+    --font-accent: 'Tangerine', cursive;
 
-    /* Premium Light Theme (Optional, if we want light mode) */
-    --background: 0 0% 98%;
-    /* Off-white */
-    --foreground: 0 0% 9%;
-    /* Deep Black */
+    /* Dynamic Theme Defaults (Managed by ThemeContext) */
+    --theme-bg: #ffffff;
+    --theme-text: #09090b;
+
+    /* Tailwind Mappings -> Point to Dynamic Vars */
+    --background: var(--theme-bg);
+    --foreground: var(--theme-text);
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 0 0% 9%;
+    --primary: 240 5.9% 10%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 9%;
-
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
     --radius: 0.5rem;
   }
 
-  .dark {
-    /* Premium Dark Theme (Default) */
-    --background: 0 0% 3.9%;
-    /* #0a0a0a */
-    --foreground: 0 0% 98%;
-    /* #fafafa */
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-  }
+  /* .dark block removed to allow Dynamic Theme to control all colors via :root variables */
 }
 
 @layer base {
-  * {}
+  * {
+    @apply border-border;
+  }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply bg-[var(--background)] text-[var(--foreground)] selection:bg-neutral-300 selection:text-black;
   }
 }
