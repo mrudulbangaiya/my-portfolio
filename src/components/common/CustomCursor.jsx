@@ -3,8 +3,6 @@ import { useCursor } from '@/context/CursorContext'
 
 export default function CustomCursor() {
     const { cursorVariant } = useCursor()
-    const svgRef = useRef(null)
-    const pathRef = useRef(null)
     const headRef = useRef(null)
     const canvasRef = useRef(null)
 
@@ -16,14 +14,15 @@ export default function CustomCursor() {
     const lastMoveTime = useRef(Date.now())
     const isMouseInViewport = useRef(true)
     const frameCount = useRef(0)
+    const startClosingLength = useRef(0) // To stabilize width during closing
+    const lastCloseUpdate = useRef(0) // For time-based closing
 
     // Configuration
     const MAX_POINTS = 20
-    const ADD_POINT_THRESHOLD = 5
     const BASE_WIDTH = 12
     const SPEED_MULTIPLIER = 1.2
     const IDLE_TIMEOUT = 2500 // 2.5s
-    const CLOSE_SPEED = 3 // Only pop 1 point every N frames (Higher = Slower close)
+    const CLOSE_INTERVAL = 60 // ms per point removal (Higher = Slower)
 
     useEffect(() => {
         const handleMouseMove = (e) => {
@@ -68,6 +67,14 @@ export default function CustomCursor() {
             const { x, y } = mouse.current
             const isIdle = timeSinceMove > IDLE_TIMEOUT
 
+            // --- 0. OPTIMIZATION CHECK ---
+            // If idle, no history, no particles, and out of view/stopped -> Skip Work
+            if (isIdle && history.current.length === 0 && particles.current.length === 0) {
+                if (headRef.current) headRef.current.style.opacity = '0'
+                rafId.current = requestAnimationFrame(loop)
+                return
+            }
+
             // --- 1. HEAD CONTROL ---
             if (headRef.current) {
                 // If idle/out, hide head
@@ -80,20 +87,28 @@ export default function CustomCursor() {
                 }
             }
 
-            // --- 2. RIFT LOGIC ---
-            let needsUpdate = false
-
+            // --- 2. RIFT LOGIC (TIME BASED) ---
             if (isIdle) {
-                // CLOSING PHASE
+                // CLOSING PHASE - RETRACT FROM TAIL
+                // Snapshot length once to maintain width profile
+                if (startClosingLength.current === 0) {
+                    startClosingLength.current = history.current.length
+                    lastCloseUpdate.current = now // Sync start time
+                }
+
                 if (history.current.length > 0) {
-                    // Only pop every N frames
-                    if (frameCount.current % CLOSE_SPEED === 0) {
+                    // Time-based retraction (Independent of FPS)
+                    if (now - lastCloseUpdate.current > CLOSE_INTERVAL) {
                         history.current.pop()
-                        needsUpdate = true
+                        lastCloseUpdate.current = now
                     }
+                } else {
+                    startClosingLength.current = 0 // Reset when done
                 }
             } else {
                 // ACTIVE PHASE
+                startClosingLength.current = 0 // Reset
+
                 // Check dist
                 const lastPoint = history.current[0]
                 const dist = lastPoint ? Math.hypot(x - lastPoint.x, y - lastPoint.y) : 0
@@ -112,8 +127,6 @@ export default function CustomCursor() {
                     // Cap history
                     if (history.current.length > MAX_POINTS) history.current.pop()
 
-                    needsUpdate = true
-
                     // SPAWN SMOKE (Only on new points)
                     const particleCount = Math.random() > 0.5 ? 2 : 1
                     for (let i = 0; i < particleCount; i++) {
@@ -130,13 +143,21 @@ export default function CustomCursor() {
                 }
             }
 
-            // --- 3. DRAW RIFT (SVG) ---
-            // OPTIMIZATION: Only touch DOM if points changed
-            if (needsUpdate) {
+            // --- 3. DRAWING (CANVAS ONLY) ---
+            if (canvasRef.current) {
+                const ctx = canvasRef.current.getContext('2d')
+                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+
+                // A. DRAW RIFT (White Shape)
                 const points = history.current
                 if (points.length > 1) {
                     let leftSide = []
                     let rightSide = []
+
+                    // Use fixed denominator during closing to prevent jitter
+                    const progressDivisor = (isIdle && startClosingLength.current > 0)
+                        ? startClosingLength.current
+                        : points.length
 
                     for (let i = 0; i < points.length - 1; i++) {
                         const p1 = points[i]; const p2 = points[i + 1]
@@ -145,54 +166,48 @@ export default function CustomCursor() {
                         const px = Math.cos(angle + Math.PI / 2)
                         const py = Math.sin(angle + Math.PI / 2)
 
-                        const progress = 1 - (i / points.length)
-                        const w = p1.width * progress
+                        // Calculate progress based on original length if closing
+                        const progress = 1 - (i / progressDivisor)
+                        // Clamp progress to 0 just in case (though math should start > 0)
+                        const w = p1.width * Math.max(0, progress)
 
-                        const jL = p1.jitterL * progress
-                        const jR = p1.jitterR * progress
+                        const jL = p1.jitterL * Math.max(0, progress)
+                        const jR = p1.jitterR * Math.max(0, progress)
 
                         leftSide.push({ x: p1.x + px * (w + jL), y: p1.y + py * (w + jL) })
                         rightSide.push({ x: p1.x - px * (w + jR), y: p1.y - py * (w + jR) })
                     }
 
                     if (leftSide.length > 0) {
-                        let d = `M ${leftSide[0].x} ${leftSide[0].y}`
-                        for (let i = 1; i < leftSide.length; i++) d += ` L ${leftSide[i].x} ${leftSide[i].y}`
-                        d += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`
-                        for (let i = rightSide.length - 1; i >= 0; i--) d += ` L ${rightSide[i].x} ${rightSide[i].y}`
-                        d += ' Z'
-                        if (pathRef.current) pathRef.current.setAttribute('d', d)
+                        ctx.fillStyle = 'white'
+                        ctx.beginPath()
+                        ctx.moveTo(leftSide[0].x, leftSide[0].y)
+                        for (let i = 1; i < leftSide.length; i++) ctx.lineTo(leftSide[i].x, leftSide[i].y)
+                        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y)
+                        for (let i = rightSide.length - 1; i >= 0; i--) ctx.lineTo(rightSide[i].x, rightSide[i].y)
+                        ctx.closePath()
+                        ctx.fill()
                     }
-                } else {
-                    if (pathRef.current) pathRef.current.setAttribute('d', '')
                 }
-            }
 
-            // --- 4. DRAW SMOKE (CANVAS) ---
-            const ctx = canvasRef.current?.getContext('2d')
-            if (ctx && canvasRef.current) {
-                ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+                // B. DRAW SMOKE
+                if (particles.current.length > 0) {
+                    for (let i = particles.current.length - 1; i >= 0; i--) {
+                        const p = particles.current[i]
 
-                for (let i = particles.current.length - 1; i >= 0; i--) {
-                    const p = particles.current[i]
+                        ctx.fillStyle = `rgba(255, 255, 255, ${p.life * 0.4})`
+                        ctx.beginPath()
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+                        ctx.fill()
 
-                    // Construct 'difference' white smoke? Or just dark smoke?
-                    // User asked for smoke. Let's make it look like subtle vapor.
-                    // Since cursor is mix-blend-difference, pure white = black invert.
-                    // Let's use WHITE with low opacity to create inverted 'smoke' puffs.
+                        // Update
+                        p.x += p.vx
+                        p.y += p.vy
+                        p.life -= p.decay
 
-                    ctx.fillStyle = `rgba(255, 255, 255, ${p.life * 0.4})`
-                    ctx.beginPath()
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-                    ctx.fill()
-
-                    // Update
-                    p.x += p.vx
-                    p.y += p.vy
-                    p.life -= p.decay
-
-                    if (p.life <= 0) {
-                        particles.current.splice(i, 1)
+                        if (p.life <= 0) {
+                            particles.current.splice(i, 1)
+                        }
                     }
                 }
             }
@@ -206,23 +221,11 @@ export default function CustomCursor() {
 
     return (
         <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden top-0 left-0 w-full h-full mix-blend-difference">
-            {/* Canvas for Smoke - Beneath Rift */}
+            {/* Canvas for Smoke & Rift */}
             <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0 w-full h-full"
             />
-
-            {/* SVG for Rift Trail */}
-            <svg
-                ref={svgRef}
-                className="absolute w-full h-full top-0 left-0 opacity-100"
-            >
-                <path
-                    ref={pathRef}
-                    fill="white"
-                    stroke="none"
-                />
-            </svg>
 
             {/* Rift Head */}
             <div

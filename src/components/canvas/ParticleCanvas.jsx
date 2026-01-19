@@ -19,8 +19,10 @@ export default function ParticleCanvas({ targetShape }) {
   const dragRef = useRef({ isDown: false, startX: 0, startTime: 0 })
 
   // Configuration
-  const PARTICLE_COUNT = 2500 // Increased for density
+  const PARTICLE_COUNT = 5000 // Jupiter Style
+  // const PARTICLE_COUNT = 5500 // Fluid (Liquid) - UNCOMMENT FOR FLUID SPHERE
   const RETURN_SPEED = 0.08
+  const GLOBE_RADIUS_FACTOR = 0.35
 
   // Contact Loop Timer
   useEffect(() => {
@@ -35,39 +37,127 @@ export default function ParticleCanvas({ targetShape }) {
     return () => clearInterval(interval)
   }, [targetShape])
 
-  // 3D Sphere Generation with Hybrid Approach (Base + Targeted Cities)
-  const generateSpherePoints = (w, h, count, radius, maskData, lightsData, imgW, imgH) => {
+  /* --- OPTION 3: THE SINGULARITY (ARCHIVED) ---
+  const generateSingularityPoints = (w, h, count, radius) => {
     const points = []
     const isDesktop = w > 1024
     const centerX = isDesktop ? w * 0.75 : w / 2
 
-    // 1. Base Sphere (Structure - ~60% of particles)
-    const baseCount = Math.floor(count * 0.6)
-    const phi = Math.PI * (3 - Math.sqrt(5))
+    // Distribution: Interstellar Style
+    // 50% Accretion Disk (Horizontal)
+    // 30% Lensed Disk (Vertical Arch - The "Halo")
+    // 10% Photon Ring (Bright Inner Edge)
+    // 10% Core Void (Chaos)
+    const diskCount = Math.floor(count * 0.5)
+    const haloCount = Math.floor(count * 0.3)
+    const photonCount = Math.floor(count * 0.1)
+    const coreCount = count - diskCount - haloCount - photonCount
 
-    for (let i = 0; i < baseCount; i++) {
-      const y = 1 - (i / (baseCount - 1)) * 2
+    const holeRadius = radius * 0.35 // Event Horizon
+
+    // 1. Core (The Void) - Swirling Chaos inside
+    for (let i = 0; i < coreCount; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos((Math.random() * 2) - 1)
+      const r = Math.pow(Math.random(), 0.5) * holeRadius // Dense near center
+
+      const x = r * Math.sin(phi) * Math.cos(theta)
+      const y = r * Math.sin(phi) * Math.sin(theta)
+      const z = r * Math.cos(phi)
+
+      points.push({
+        x: x + centerX, y: y + h / 2, z: z,
+        baseX: x, baseY: y, baseZ: z,
+        isCore: true, isPhoton: false, isHalo: false, isDisk: false,
+        shape: Math.random() > 0.5 ? 'circle' : 'square'
+      })
+    }
+
+    // 2. Photon Ring (The Definition) - Thin, dense, bright ring
+    for (let i = 0; i < photonCount; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const r = holeRadius * (1.0 + Math.random() * 0.05) // Very tight band
+
+      const x = r * Math.cos(theta)
+      const z = r * Math.sin(theta)
+      const y = (Math.random() - 0.5) * (radius * 0.02) // Flat
+
+      points.push({
+        x: x + centerX, y: y + h / 2, z: z,
+        baseX: x, baseY: y, baseZ: z,
+        orbitRadius: r, orbitAngle: theta,
+        isCore: false, isPhoton: true, isHalo: false, isDisk: false,
+        shape: 'circle'
+      })
+    }
+
+    // 3. Accretion Disk (Horizontal Swirl)
+    for (let i = 0; i < diskCount; i++) {
+      const r = holeRadius * (1.1 + Math.random() * 4.0) // Wide
+      const spiralOffset = 3.0 * Math.log(r / holeRadius)
+      const theta = (Math.random() * Math.PI * 2) + spiralOffset
+
+      const x = r * Math.cos(theta)
+      const z = r * Math.sin(theta)
+      const y = (Math.random() - 0.5) * (radius * 0.15) // Flatter
+
+      points.push({
+        x: x + centerX, y: y + h / 2, z: z,
+        baseX: x, baseY: y, baseZ: z,
+        orbitRadius: r, orbitAngle: theta,
+        isCore: false, isPhoton: false, isHalo: false, isDisk: true,
+        shape: Math.random() > 0.8 ? 'square' : 'circle'
+      })
+    }
+
+    // 4. Lensed Halo (Vertical Arch - "Interstellar" Check)
+    // This simulates the light from behind the black hole bending OVER it.
+    for (let i = 0; i < haloCount; i++) {
+      const r = holeRadius * (1.1 + Math.random() * 1.5) // Closer to core
+      const theta = Math.random() * Math.PI * 2
+
+      // Vertical Disc (YZ Plane mostly)
+      // We slightly tilt it to look like an arch
+      const x = (Math.random() - 0.5) * (radius * 0.2)
+      const y = r * Math.cos(theta)
+      const z = r * Math.sin(theta)
+
+      points.push({
+        x: x + centerX, y: y + h / 2, z: z,
+        baseX: x, baseY: y, baseZ: z,
+        orbitRadius: r, orbitAngle: theta,
+        isCore: false, isPhoton: false, isHalo: true, isDisk: false,
+        shape: 'circle'
+      })
+    }
+
+    return points
+  }
+  */
+
+  // --- OPTION 1: THE NUCLEUS (ACTIVE) ---
+  const generateNucleusPoints = (w, h, count, radius) => {
+    const points = []
+    const isDesktop = w > 1024
+    const centerX = isDesktop ? w * 0.75 : w / 2
+
+    // Distribution: 60% Sphere, 40% Massive Ring
+    const sphereCount = Math.floor(count * 0.6)
+    const ringCount = count - sphereCount
+
+    // 1. Core Sphere (Noisy)
+    const phi = Math.PI * (3 - Math.sqrt(5))
+    for (let i = 0; i < sphereCount; i++) {
+      const y = 1 - (i / (sphereCount - 1)) * 2
       const radiusAtY = Math.sqrt(1 - y * y)
       const theta = phi * i
 
       const x = Math.cos(theta) * radiusAtY
       const z = Math.sin(theta) * radiusAtY
 
-      const u = (Math.atan2(x, z) / (Math.PI * 2)) + 0.5
-      const v = 1 - ((y + 1) * 0.5)
-
-      let isLand = true
-      if (maskData) {
-        const px = Math.floor(u * imgW)
-        const py = Math.floor(v * imgH)
-        const idx = (py * imgW + px) * 4
-        if (maskData[idx] > 100) isLand = true
-        else isLand = false
-      }
-
-      // Base points are rarely cities (statistically), so we assume no unless hit
-      // But we actually want to reserve cities for the Targeted pass to ensure density.
-      // So let's just mark these as Land/Water.
+      // Noise pattern
+      const noise = Math.sin(x * 10) * Math.cos(y * 10) + Math.sin(z * 5)
+      const isHotspot = noise > 0.5
 
       points.push({
         x: x * radius + centerX,
@@ -76,159 +166,110 @@ export default function ParticleCanvas({ targetShape }) {
         baseX: x * radius,
         baseY: y * radius,
         baseZ: z * radius,
-        isLand,
-        isCity: false, // Base points are structural
-        u
+        isHotspot,
+        isRing: false,
+        shape: isHotspot ? 'square' : 'circle'
       })
     }
 
-    // 2. Targeted City Injection (~40%)
-    if (lightsData) {
-      const targetCityCount = count - baseCount
-      const candidatePixels = []
+    // 2. Massive Jupiter Ring (Flat Generation)
+    // Coords on XZ plane (Y=0). Tilt applied in Animate loop.
+    for (let i = 0; i < ringCount; i++) {
+      const angle = Math.random() * Math.PI * 2
+      // Distribute distance: Inner 2.2x (Wide Gap), Outer 5.0x (Massive)
+      const dist = radius * (2.2 + Math.random() * 2.8)
 
-      // Scan for bright pixels (downsample for performance if needed, but 1000x500 is fast enough)
-      // Step > 1 to skip pixels? Let's step 2 to save loop time
-      const step = 2
-      for (let y = 0; y < imgH; y += step) {
-        for (let x = 0; x < imgW; x += step) {
-          const idx = (y * imgW + x) * 4
-          if (lightsData[idx] > 50) { // Found a light
-            candidatePixels.push({ x, y })
-          }
-        }
-      }
-
-      // Randomly sample from candidates
-      for (let i = 0; i < targetCityCount; i++) {
-        if (candidatePixels.length === 0) break
-
-        const randIdx = Math.floor(Math.random() * candidatePixels.length)
-        const px = candidatePixels[randIdx] // {x, y}
-
-        // Convert 2D (x,y) -> UV (u,v) -> 3D (x,y,z)
-        const u = px.x / imgW
-        const v = px.y / imgH // Top-down
-
-        // Inverse Spherical mapping
-        // v = 1 - ((y_sph + 1) * 0.5)  =>  y_sph = (1 - v) * 2 - 1
-        const y_sph = (1 - v) * 2 - 1
-        const radiusAtY = Math.sqrt(1 - y_sph * y_sph)
-
-        // u = (atan2(x, z) / 2PI) + 0.5 => atan2 = (u - 0.5) * 2PI
-        const theta = (u - 0.5) * Math.PI * 2
-
-        const x_sph = Math.sin(theta) * radiusAtY
-        const z_sph = Math.cos(theta) * radiusAtY
-
-        // Wait, atan2(x, z). x is sin?
-        // std: x=r*sin(th)*cos(phi)...
-        // My previous forward: x = cos(theta)*r, z = sin(theta)*r. atan2(x,z) ?
-        // Testing: theta=0 -> x=1, z=0. atan2(1,0) = PI/2? No.
-        // Let's stick to the mapping: u corresponds to Angle around Y.
-        // Let Angle = (u - 0.5) * 2PI.
-        // We need x, z such that atan2(x, z) = Angle.
-        // x = sin(Angle), z = cos(Angle) works for atan2(sin, cos) in some libs, 
-        // but Math.atan2(y, x). So Math.atan2(x, z).
-        // Let's rely on standard circular: x = sin(Ang)*r, z = cos(Ang)*r.
-
-        const ang = (u - 0.5) * Math.PI * 2
-        const x_final = Math.sin(ang) * radiusAtY
-        const z_final = Math.cos(ang) * radiusAtY
-
-        points.push({
-          x: x_final * radius + centerX,
-          y: y_sph * radius + h / 2,
-          z: z_final * radius,
-          baseX: x_final * radius,
-          baseY: y_sph * radius,
-          baseZ: z_final * radius,
-          isLand: true, // Cities are on land
-          isCity: true,
-          u
-        })
-      }
+      points.push({
+        x: centerX + Math.cos(angle) * dist,
+        y: h / 2, // Flat
+        z: Math.sin(angle) * dist,
+        baseX: Math.cos(angle) * dist,
+        baseY: 0,
+        baseZ: Math.sin(angle) * dist,
+        ringAngle: angle,     // For Orbit Logic
+        ringRadius: dist,     // For Orbit Logic
+        isHotspot: false,
+        isRing: true,
+        shape: Math.random() > 0.8 ? 'square' : 'circle'
+      })
     }
-
-    return points.sort(() => Math.random() - 0.5) // Shuffle so they draw mixed
+    return points
   }
 
-  // Helper to load image data
-  const loadImageData = (src) => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.crossOrigin = "Anonymous"
-      img.src = src
-      img.onload = () => {
-        const c = document.createElement('canvas')
-        c.width = img.width
-        c.height = img.height
-        const ctx = c.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-        resolve({
-          data: ctx.getImageData(0, 0, img.width, img.height).data,
-          width: img.width,
-          height: img.height
+
+  /* --- OPTION 2: THE FLUID SPHERE (ARCHIVED) ---
+  // UNCOMMENT FOR FLUID SPHERE
+  const generateFluidPoints = (w, h, count, radius) => {
+    const points = []
+    const isDesktop = w > 1024
+    const centerX = isDesktop ? w * 0.75 : w / 2
+    
+    const phi = Math.PI * (3 - Math.sqrt(5))
+    for (let i = 0; i < count; i++) {
+        const y = 1 - (i / (count - 1)) * 2
+        const radiusAtY = Math.sqrt(1 - y * y)
+        const theta = phi * i
+        
+        const x = Math.cos(theta) * radiusAtY
+        const z = Math.sin(theta) * radiusAtY
+        
+        points.push({
+            x: x * radius + centerX,
+            y: y * radius + h / 2,
+            z: z * radius,
+            normX: x, normY: y, normZ: z,
+            baseX: x * radius,
+            baseY: y * radius,
+            baseZ: z * radius,
+            baseRadius: radius,
+            shape: 'circle'
         })
-      }
-      img.onerror = () => {
-        console.warn("Failed to load map:", src)
-        resolve(null)
-      }
-    })
+    }
+    return points
   }
+  */
 
   // 1. Initialization
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // Function to scan text and return points
+    // Scan Text
     const scanText = (text, w, h) => {
       const offCanvas = document.createElement('canvas')
       offCanvas.width = w
       offCanvas.height = h
       const offCtx = offCanvas.getContext('2d')
-
-      // Responsive Center logic
       const isDesktop = w > 1024
       const centerX = isDesktop ? w * 0.75 : w / 2
-
-      // Responsive huge font
       const fontSize = Math.min(w * 0.2, 350)
       offCtx.font = `900 ${fontSize}px "Manrope", sans-serif`
       offCtx.fillStyle = 'white'
       offCtx.textAlign = 'center'
       offCtx.textBaseline = 'middle'
-      offCtx.fillText(text, centerX, h / 2) // Draw text at calculated center
-
+      offCtx.fillText(text, centerX, h / 2)
       const imageData = offCtx.getImageData(0, 0, w, h).data
       const points = []
-      const gap = 5 // Higher density
-
+      const gap = 5
       for (let y = 0; y < h; y += gap) {
         for (let x = 0; x < w; x += gap) {
           const index = (y * w + x) * 4
-          if (imageData[index + 3] > 128) {
-            points.push({ x, y, z: 0 })
-          }
+          if (imageData[index + 3] > 128) points.push({ x, y, z: 0 })
         }
       }
       return points.sort(() => Math.random() - 0.5)
     }
 
-    // Function to scan Icons (Procedural Shapes)
+    // Scan Icon
     const scanIcon = (type, w, h) => {
       const offCanvas = document.createElement('canvas')
       offCanvas.width = w
       offCanvas.height = h
       const ctx = offCanvas.getContext('2d')
-
       const isDesktop = w > 1024
       const cx = isDesktop ? w * 0.75 : w / 2
       const cy = h / 2
-
-      const size = Math.min(w * 0.15, 250) // Icon Size
+      const size = Math.min(w * 0.15, 250)
 
       ctx.fillStyle = 'white'
       ctx.strokeStyle = 'white'
@@ -237,34 +278,24 @@ export default function ParticleCanvas({ targetShape }) {
       ctx.lineCap = 'round'
 
       if (type === 'EMAIL') {
-        // Envelope
         const w = size * 1.5
         const h = size
         const x = cx - w / 2
         const y = cy - h / 2
-
-        // Box
         ctx.strokeRect(x, y, w, h)
-
-        // Flap
         ctx.beginPath()
         ctx.moveTo(x, y)
         ctx.lineTo(cx, cy + h * 0.2)
         ctx.lineTo(x + w, y)
         ctx.stroke()
       } else if (type === 'LI') {
-        // LinkedIn Box
         const s = size * 1.2
         const x = cx - s / 2
         const y = cy - s / 2
-        const r = s * 0.2 // radius
-
-        // Rounded Rect
+        const r = s * 0.2
         ctx.beginPath()
         ctx.roundRect(x, y, s, s, r)
         ctx.stroke()
-
-        // "in" Text
         ctx.font = `700 ${s * 0.6}px "Manrope", sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -273,14 +304,11 @@ export default function ParticleCanvas({ targetShape }) {
 
       const imageData = ctx.getImageData(0, 0, w, h).data
       const points = []
-      const gap = 4 // Tighter gap for icons
-
+      const gap = 4
       for (let y = 0; y < h; y += gap) {
         for (let x = 0; x < w; x += gap) {
           const index = (y * w + x) * 4
-          if (imageData[index + 3] > 128) {
-            points.push({ x, y, z: 0 })
-          }
+          if (imageData[index + 3] > 128) points.push({ x, y, z: 0 })
         }
       }
       return points.sort(() => Math.random() - 0.5)
@@ -290,7 +318,7 @@ export default function ParticleCanvas({ targetShape }) {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
 
-      // Create random particles
+      // Pool
       const newParticles = []
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         newParticles.push({
@@ -307,28 +335,14 @@ export default function ParticleCanvas({ targetShape }) {
       }
       particlesRef.current = newParticles
 
-      // 1. Synchronous Initial Sphere (Prevent Invisible Start)
-      // We generate a "blank" sphere immediately so the user sees something while maps load
-      const radius = Math.min(canvas.width, canvas.height) * 0.3
-      shapePointsRef.current.sphere = generateSpherePoints(canvas.width, canvas.height, PARTICLE_COUNT, radius, null, null, 100, 100)
+      // 1. Initial Generator (SELECT ONE)
+      const radius = Math.min(canvas.width, canvas.height) * GLOBE_RADIUS_FACTOR
+      shapePointsRef.current.sphere = generateNucleusPoints(canvas.width, canvas.height, PARTICLE_COUNT, radius) // ACTIVE
+      // shapePointsRef.current.sphere = generateSingularityPoints(canvas.width, canvas.height, PARTICLE_COUNT, radius) // ARCHIVED
+      // shapePointsRef.current.sphere = generateFluidPoints(canvas.width, canvas.height, PARTICLE_COUNT, radius) // UNCOMMENT FOR FLUID
 
-      // 2. Load Maps (Async)
-      const mask = await loadImageData('/earth_mask.png')
-      const lights = await loadImageData('/earth_lights.png')
-
-      // 3. Re-Generate Earth Sphere with Map Data
-      const mk = mask ? mask.data : null
-      const lk = lights ? lights.data : null
-      const mw = mask ? mask.width : 100
-      const mh = mask ? mask.height : 100
-
-      shapePointsRef.current.sphere = generateSpherePoints(canvas.width, canvas.height, PARTICLE_COUNT, radius, mk, lk, mw, mh)
-
-      // 4. Other targets
-      try {
-        await document.fonts.ready
-      } catch (e) { /* ignore */ }
-
+      // 2. Targets
+      try { await document.fonts.ready } catch (e) { }
       shapePointsRef.current.MB = scanText('MB', canvas.width, canvas.height)
       shapePointsRef.current.CODE = scanText('</>', canvas.width, canvas.height)
       shapePointsRef.current.EMAIL = scanIcon('EMAIL', canvas.width, canvas.height)
@@ -336,146 +350,204 @@ export default function ParticleCanvas({ targetShape }) {
     }
 
     init()
-    window.addEventListener('resize', init)
-    return () => window.removeEventListener('resize', init)
+    const handleResize = () => init()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   // 2. Animation Loop
   useEffect(() => {
     const canvas = canvasRef.current
+    if (!canvas) return
     const ctx = canvas.getContext('2d', { alpha: true })
     let animationFrameId
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // 0-1 Progress of the day
+      const t = time * 0.5
       const dayProgress = time / 24
-      const sphereRotation = dayProgress * Math.PI * 2
+      const rotationY = dayProgress * Math.PI * 2
+      // Use Theme Context for Night/Day logic to stay in sync with UI
+      const isNight = ['Midnight', 'Night', 'Early Morning'].includes(theme.name)
+      const isDesktop = canvas.width > 1024
+      const centerX = isDesktop ? canvas.width * 0.75 : canvas.width / 2
+      const centerY = canvas.height / 2
+      const radius = Math.min(canvas.width, canvas.height) * GLOBE_RADIUS_FACTOR // Fix for ReferenceError
 
-      const getTargetPoint = (i) => {
-        if (targetShape === 'none') return null
-
-        // Determine Active Shape Key
-        let activeKey = targetShape
-        if (targetShape === 'contact') {
-          activeKey = contactShapes[contactIndex]
-        }
-
-        const targetList = shapePointsRef.current[activeKey] || shapePointsRef.current.sphere
-        const rawTarget = targetList[i % targetList.length]
-
-        if (activeKey === 'sphere' && rawTarget && rawTarget.baseX !== undefined) {
-          const cos = Math.cos(sphereRotation)
-          const sin = Math.sin(sphereRotation)
-
-          const isDesktop = canvas.width > 1024
-          const centerX = isDesktop ? canvas.width * 0.75 : canvas.width / 2
-
-          const rotX = rawTarget.baseX * cos - rawTarget.baseZ * sin
-          const rotZ = rawTarget.baseX * sin + rawTarget.baseZ * cos
-
-          // Calculate Lighting State
-          let isNight = false
-          if (theme.themeMode === 'dark') {
-            isNight = true // Always night -> Show lights
-          } else if (theme.themeMode === 'light') {
-            isNight = false // Always day -> No lights
-          } else {
-            // Auto: Terminator
-            isNight = rotZ < -10
-          }
-
-          return {
-            x: rotX + centerX,
-            y: rawTarget.baseY + canvas.height / 2,
-            z: rotZ,
-            isLand: rawTarget.isLand,
-            isCity: rawTarget.isCity,
-            isNight: isNight
-          }
-        }
-        return rawTarget
+      // Batches (Nucleus)
+      const batches = {
+        core: [], hotspot: [], ringBack: [], ringFront: [], default: []
       }
 
+      /* Batches (Fluid) - UNCOMMENT FOR FLUID
+      const batches = {
+        high: [], mid: [], low: [], default: []
+      }
+      */
+
+      const activeKey = targetShape === 'contact' ? contactShapes[contactIndex] : targetShape
+      const targetList = shapePointsRef.current[activeKey] || shapePointsRef.current.sphere
+
       particlesRef.current.forEach((p, i) => {
-        const target = getTargetPoint(i)
+        let tX = p.originX, tY = p.originY, tZ = 0
+        let isHotspot = false, isRing = false
+        // let waveHeight = 0 // Fluid Only
 
-        let targetX = target ? target.x : p.originX
-        let targetY = target ? target.y : p.originY
-        let targetZ = target ? target.z || 0 : 0
+        if (i < targetList.length) {
+          const rawTarget = targetList[i]
 
-        let scale = 1
-        // Only sphere has depth scaling for now
-        if (targetShape === 'sphere') {
-          const focalLength = 800
-          scale = focalLength / (focalLength + targetZ)
+          // --- OPTION 1: NUCLEUS LOGIC (ACTIVE) ---
+          if (activeKey === 'sphere' && rawTarget.baseX !== undefined) {
+            if (!rawTarget.isRing) {
+              // Core Rotation
+              const cos = Math.cos(rotationY)
+              const sin = Math.sin(rotationY)
+              tX = (rawTarget.baseX * cos - rawTarget.baseZ * sin) + (rawTarget.x - rawTarget.baseX)
+              tZ = (rawTarget.baseX * sin + rawTarget.baseZ * cos)
+              tY = rawTarget.baseY + centerY
+            } else {
+              // Jupiter Ring Orbit & Tilt
+              // Differential Rotation: Inner faster, Outer slower
+              const orbitSpeed = (rotationY * 0.5) * (radius / rawTarget.ringRadius)
+              const angle = rawTarget.ringAngle + orbitSpeed
+              const dist = rawTarget.ringRadius
+
+              // 1. Flat Rotation (Orbit)
+              let rx = Math.cos(angle) * dist
+              let ry = 0
+              let rz = Math.sin(angle) * dist
+
+              // 2. Static Tilt (The "Look")
+              const tiltX = 0.45 // ~25 deg
+              const tiltZ = 0.15 // ~8 deg
+
+              // X-Rotation
+              let y1 = ry * Math.cos(tiltX) - rz * Math.sin(tiltX)
+              let z1 = ry * Math.sin(tiltX) + rz * Math.cos(tiltX)
+
+              // Z-Rotation
+              let xFinal = rx * Math.cos(tiltZ) - y1 * Math.sin(tiltZ)
+              let yFinal = rx * Math.sin(tiltZ) + y1 * Math.cos(tiltZ)
+
+              tX = xFinal + centerX
+              tY = yFinal + centerY
+              tZ = z1
+            }
+            isHotspot = rawTarget.isHotspot
+            isRing = rawTarget.isRing
+          }
+
+          /* --- OPTION 3: SINGULARITY LOGIC (ARCHIVED) ---
+          if (activeKey === 'sphere' && rawTarget.baseX !== undefined) { ... }
+          */
+          /* --- OPTION 2: FLUID LOGIC (COMMENTED) ---
+          else if (activeKey === 'sphere' && rawTarget.normX !== undefined) {
+             const wavePhase = Date.now() * 0.0015
+             const w1 = Math.sin(rawTarget.normY * 5 + wavePhase) 
+             const w2 = Math.cos(rawTarget.normX * 5 + wavePhase * 1.3)
+             const w3 = Math.sin(rawTarget.normZ * 5 + wavePhase * 0.7)
+             waveHeight = (w1 + w2 + w3)
+             const radiusMod = 1 + (waveHeight * 0.08)
+             const currentRadius = rawTarget.baseRadius * radiusMod
+             const cos = Math.cos(rotationY); const sin = Math.sin(rotationY)
+             const rx = rawTarget.normX * currentRadius
+             const ry = rawTarget.normY * currentRadius
+             const rz = rawTarget.normZ * currentRadius
+             tX = (rx * cos - rz * sin) + centerX
+             tZ = (rx * sin + rz * cos)
+             tY = ry + centerY
+          } 
+          */
+          else if (activeKey !== 'sphere') {
+            tX = rawTarget.x; tY = rawTarget.y; tZ = rawTarget.z
+          }
+        }
+
+        // Physics
+        const focalLength = 1000
+        const scale = (activeKey === 'sphere') ? focalLength / (focalLength + tZ) : 1
+
+        let targetX = tX
+        let targetY = tY
+
+        if (activeKey === 'sphere') {
+          const relX = tX - centerX
+          const relY = tY - centerY
+          targetX = relX * scale + centerX
+          targetY = relY * scale + centerY
         }
 
         p.x += (targetX - p.x) * RETURN_SPEED
         p.y += (targetY - p.y) * RETURN_SPEED
 
-        const displaySize = p.size * scale
-        const displayAlpha = scale
+        const size = p.size * scale
+        if (size < 0) return
 
-
-        // --- EARTH COLOR LOGIC ---
-        ctx.fillStyle = theme.particle // Default
-
-        // Base Alpha based on depth
-        let finalAlpha = Math.max(0.1, Math.min(1.0, displayAlpha * 0.9))
-
-        let shouldDraw = true
-        if (targetShape === 'sphere' && target && target.isNight !== undefined) {
-          // 1. NIGHT SIDE
-          if (target.isNight) {
-            if (target.isCity) {
-              // Glowing City Lights - Ultra Bright
-              ctx.fillStyle = '#FFFFFF' // White center
-              ctx.shadowBlur = 10
-              ctx.shadowColor = '#FFD700' // Gold Glow
-              finalAlpha = 1.0
-            } else if (target.isLand) {
-              // Night Land - Silver/Gray
-              ctx.fillStyle = '#94a3b8' // Slate-400
-              ctx.shadowBlur = 0
-              finalAlpha = displayAlpha * 0.8
-            } else {
-              // Night Water - Dark Slate
-              ctx.fillStyle = '#334155'
-              finalAlpha = displayAlpha * 0.15
-            }
+        // Sorting (Nucleus Active)
+        if (activeKey === 'sphere') {
+          // Removed Culling to show full sphere
+          if (isRing) {
+            if (tZ < 0) batches.ringBack.push({ x: p.x, y: p.y, s: size * 0.8 })
+            else batches.ringFront.push({ x: p.x, y: p.y, s: size * 0.8 })
           }
-          // 2. DAY SIDE
-          else {
-            // Day Mode - Colorful Earth as requested
-            if (target.isLand) {
-              // Cities act as land in day
-              // Green Land 
-              ctx.fillStyle = '#10b981' // Emerald-500
-              ctx.shadowBlur = 0
-              finalAlpha = displayAlpha * 0.9
-            } else {
-              // Water - Blue
-              ctx.fillStyle = '#3b82f6' // Blue-500
-              finalAlpha = displayAlpha * 0.3 // Semi-transparent blue ocean
-            }
-          }
+          else if (isHotspot) batches.hotspot.push({ x: p.x, y: p.y, s: size * 1.5 })
+          else batches.core.push({ x: p.x, y: p.y, s: size })
+        } else {
+          batches.default.push({ x: p.x, y: p.y, s: size })
         }
 
-        if (shouldDraw) {
-          ctx.globalAlpha = finalAlpha
+        /* Sorting (Fluid Commented)
+        if (activeKey === 'sphere') {
+             if (tZ < -20) return
+             if (waveHeight > 1.2) batches.high.push({ x: p.x, y: p.y, s: size })
+             else if (waveHeight < -1.2) batches.low.push({ x: p.x, y: p.y, s: size * 0.9 })
+             else batches.mid.push({ x: p.x, y: p.y, s: size })
+        } else {
+             batches.default.push({ x: p.x, y: p.y, s: size })
+        }
+        */
+      })
 
-          ctx.beginPath()
-          if (p.shape === 'circle') {
-            ctx.arc(p.x, p.y, displaySize, 0, Math.PI * 2)
-          } else {
-            ctx.rect(p.x, p.y, displaySize, displaySize)
-          }
-          ctx.fill()
+      const drawBatch = (points, color, shadow = false) => {
+        if (points.length === 0) return
+        ctx.fillStyle = color
+        if (shadow) {
+          ctx.shadowBlur = 10
+          ctx.shadowColor = color
+        } else {
           ctx.shadowBlur = 0
         }
-      })
+        ctx.beginPath()
+        for (let pt of points) ctx.rect(pt.x, pt.y, pt.s, pt.s)
+        ctx.fill()
+      }
+
+      // Draw (Nucleus Active)
+      if (isNight) {
+        drawBatch(batches.ringBack, '#ffffff') // Pure White (Max Intensity)
+        drawBatch(batches.core, '#1e293b') // Slate 800 (Soft Planet)
+        drawBatch(batches.hotspot, '#38bdf8', true) // Sky 400 (Soft Glow)
+        drawBatch(batches.ringFront, '#ffffff') // Pure White (Max Intensity)
+      } else {
+        drawBatch(batches.ringBack, '#020617') // Slate 950 (Max Darkness)
+        drawBatch(batches.core, '#cbd5e1') // Slate 300 (Soft Planet)
+        drawBatch(batches.hotspot, '#0ea5e9') // Sky 500 (Soft Blue)
+        drawBatch(batches.ringFront, '#020617') // Slate 950 (Max Darkness)
+      }
+      /* Draw (Fluid Commented)
+      if (isNight) {
+          drawBatch(batches.low, '#1e3a8a')
+          drawBatch(batches.mid, '#3b82f6')
+          drawBatch(batches.high, '#bae6fd', true)
+      } else {
+          drawBatch(batches.low, '#0369a1') 
+          drawBatch(batches.mid, '#0ea5e9') 
+          drawBatch(batches.high, '#e0f2fe')
+      }
+      */
+
+      drawBatch(batches.default, theme.particle)
+
       animationFrameId = requestAnimationFrame(animate)
     }
 
@@ -483,42 +555,31 @@ export default function ParticleCanvas({ targetShape }) {
     return () => cancelAnimationFrame(animationFrameId)
   }, [targetShape, time, theme, contactIndex])
 
-  // Interaction Handlers (Scrubbing)
+  // Interaction Handlers
   const handlePointerDown = (e) => {
-    // Only interactive if sphere
     if (targetShape !== 'sphere') return
-
     dragRef.current.isDown = true
     dragRef.current.startX = e.clientX || e.touches?.[0].clientX
     dragRef.current.startTime = time
-    setIsPlaying(false) // Pause Clock
-
+    setIsPlaying(false)
     canvasRef.current.style.cursor = 'grabbing'
   }
 
   const handlePointerMove = (e) => {
     if (!dragRef.current.isDown) return
-
     const clientX = e.clientX || e.touches?.[0].clientX
     const deltaX = clientX - dragRef.current.startX
-
-    // Sensitivity: 500px width = 12 Hours
-    // Drag Right = Forward in Time
-    // Drag Left = Backward in Time
     const hoursDelta = (deltaX / window.innerWidth) * 24
-
     let newTime = dragRef.current.startTime + hoursDelta
-    // Normalize to 0-24
     if (newTime < 0) newTime += 24
     if (newTime > 24) newTime %= 24
-
     setTime(newTime)
   }
 
   const handlePointerUp = () => {
     if (!dragRef.current.isDown) return
     dragRef.current.isDown = false
-    setIsPlaying(true) // Resume Clock
+    setIsPlaying(true)
     canvasRef.current.style.cursor = 'grab'
   }
 
