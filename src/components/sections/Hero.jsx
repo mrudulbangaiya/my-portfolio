@@ -8,6 +8,7 @@ import { ArrowDown, Sun, Moon, Globe } from "lucide-react"
 import ParticleCanvas from "@/components/canvas/ParticleCanvas"
 import { useCursor } from "@/context/CursorContext"
 import { useTheme } from "@/context/ThemeContext"
+import { useTime } from "@/context/TimeContext"
 
 export default function Hero() {
     const [hoverState, setHoverState] = useState('sphere')
@@ -35,28 +36,36 @@ export default function Hero() {
         <section className="relative h-screen w-full overflow-hidden bg-background text-foreground grid grid-cols-1 lg:grid-cols-2">
 
             {/* Theme Toggle - Top Right */}
-            <div className="absolute top-6 right-6 z-50 flex items-center gap-1 bg-background/50 backdrop-blur-md p-1 rounded-full border border-border/50 shadow-sm pointer-events-auto">
-                <button
-                    onClick={() => setThemeMode('light')}
-                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'light' ? 'bg-background shadow-sm text-yellow-500 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
-                    title="Light Mode"
-                >
-                    <Sun className="w-5 h-5" />
-                </button>
-                <button
-                    onClick={() => setThemeMode('auto')}
-                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'auto' ? 'bg-background shadow-sm text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}`}
-                    title="Auto (Dynamic)"
-                >
-                    <Globe className="w-5 h-5" />
-                </button>
-                <button
-                    onClick={() => setThemeMode('dark')}
-                    className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'dark' ? 'bg-background shadow-sm text-indigo-400 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
-                    title="Dark Mode"
-                >
-                    <Moon className="w-5 h-5" />
-                </button>
+            {/* Theme Toggle & Clock - Top Right */}
+            <div className="absolute top-6 right-6 z-50 flex flex-col items-end gap-4 pointer-events-auto">
+
+                {/* Toggle Group */}
+                <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md p-1 rounded-full border border-border/50 shadow-sm">
+                    <button
+                        onClick={() => setThemeMode('light')}
+                        className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'light' ? 'bg-background shadow-sm text-yellow-500 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                        title="Light Mode"
+                    >
+                        <Sun className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => setThemeMode('auto')}
+                        className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'auto' ? 'bg-background shadow-sm text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                        title="Auto (Dynamic)"
+                    >
+                        <Globe className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => setThemeMode('dark')}
+                        className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'dark' ? 'bg-background shadow-sm text-indigo-400 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
+                        title="Dark Mode"
+                    >
+                        <Moon className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Clock Display */}
+                <ClockDisplay mode={themeMode} />
             </div>
 
             {/* 1. Background Particles (Full Screen Absolute, but visual centered on right via Canvas logic) */}
@@ -104,8 +113,8 @@ export default function Hero() {
                             </span>
 
                             <h2
-                                className="font-sans text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-b from-neutral-100 to-neutral-500 cursor-pointer hover:scale-105 transition-transform duration-300 whitespace-nowrap"
-                                onMouseEnter={() => handleTextHover('WD')}
+                                className="font-sans text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-b from-neutral-100 to-neutral-500 cursor-pointer transition-transform duration-300 whitespace-nowrap"
+                                onMouseEnter={handleSimpleHover}
                                 onMouseLeave={handleTextLeave}
                             >
                                 Web Developer.
@@ -126,10 +135,21 @@ export default function Hero() {
 
                 {/* Buttons */}
                 <motion.div variants={slideUp} className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start pt-8 pointer-events-auto w-full">
-                    <Button size="lg" className="h-14 px-10 text-lg rounded-full shadow-lg hover:shadow-primary/20 transition-all duration-300">
+                    <Button
+                        size="lg"
+                        className="h-14 px-10 text-lg rounded-full shadow-lg hover:shadow-primary/20 transition-all duration-300"
+                        onMouseEnter={() => setHoverState('CODE')}
+                        onMouseLeave={handleTextLeave}
+                    >
                         View My Projects
                     </Button>
-                    <Button size="lg" variant="outline" className="h-14 px-10 text-lg rounded-full border-2 hover:bg-secondary transition-all duration-300">
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-14 px-10 text-lg rounded-full border-2 hover:bg-secondary transition-all duration-300"
+                        onMouseEnter={() => setHoverState('contact')}
+                        onMouseLeave={handleTextLeave}
+                    >
                         Contact Me
                     </Button>
                 </motion.div>
@@ -155,5 +175,49 @@ export default function Hero() {
             </motion.div>
 
         </section>
+    )
+}
+
+// Clock Component
+const ClockDisplay = ({ mode }) => {
+    const { time } = useTime()
+
+    // Determine Time String
+    let displayTime = "00:00"
+    let statusText = "Midnight"
+
+    if (mode === 'light') {
+        displayTime = "08:00"
+        statusText = "Morning"
+    } else if (mode === 'dark') {
+        displayTime = "00:00"
+        statusText = "Midnight"
+    } else {
+        // Auto - Calculate HH:MM
+        const hours = Math.floor(time)
+        const minutes = Math.floor((time % 1) * 60)
+        displayTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+
+        // Dynamic Status
+        if (hours >= 5 && hours < 12) statusText = "Morning"
+        else if (hours >= 12 && hours < 17) statusText = "Afternoon"
+        else if (hours >= 17 && hours < 21) statusText = "Evening"
+        else statusText = "Night"
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            key={mode} // Re-animate on mode switch
+            className="flex flex-col items-end pointer-events-none"
+        >
+            <div className="font-mono text-xl tracking-widest text-foreground/80 font-bold tabular-nums">
+                {displayTime}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                {statusText}
+            </div>
+        </motion.div>
     )
 }

@@ -23,3 +23,23 @@
 - **Typography Strategy**:
     - Simplified to **2-Font System**: Manrope (Sans) + Tangerine (Cursive).
     - Refined Hero text layout: Large cursive Name + Clean sans Role.
+
+## 2026-01-19 (Session 3)
+- **Particle System Upgrades**:
+    - **Particle Icons**: Implemented `scanText` (for `</>`) and procedural `scanIcon` (for Envelope/LinkedIn) shapes.
+    - **Contact Loop**: `Contact Me` button now cycles through Email and LinkedIn icons.
+- **Earth Transformation**:
+    - **Hybrid Generation**: Implemented a 2500-particle system blending random points + targeted city light points.
+    - **Dynamic Lighting**:
+        - **Night**: Glowing Gold City Lights + Silver Land.
+        - **Day**: Emerald Green Land + Blue Water + Cities blended as land.
+    - **High-Contrast**: Boosted alpha for visibility in Dark Mode.
+- **Performance**:
+    - **Rift Cursor**: Optimized closing animation logic, preventing redrawing idle states and reducing path complexity.
+
+### ⚠️ Pending Feedback / Next Steps (To-Do)
+The user has noted specific aesthetic and performance issues to address in the next session:
+1.  **Light Mode Earth**: Needs refinement; continents are not fully recognizable.
+2.  **Dark Mode Optimization**: Performance feels "way too heavy".
+3.  **Night Mode Earth**: Needs refinement (aesthetics/visuals).
+4.  **Rift Cursor in Dark Mode**: Still feels heavy; needs to be lighter and smooth.

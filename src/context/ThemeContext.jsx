@@ -5,13 +5,13 @@ const ThemeContext = createContext()
 
 // Color Stages
 const THEME_STAGES = [
-    { time: 0, bg: '#09090b', text: '#fafafa', accent: '#71717a', particle: '#a1a1aa', name: 'Midnight' },
-    { time: 4, bg: '#1e1b4b', text: '#e2e8f0', accent: '#818cf8', particle: '#c7d2fe', name: 'Dawn' },
-    { time: 8, bg: '#fdf4ff', text: '#4a044e', accent: '#f472b6', particle: '#fb923c', name: 'Morning' },
-    { time: 12, bg: '#ffffff', text: '#09090b', accent: '#0ea5e9', particle: '#38bdf8', name: 'Noon' },
-    { time: 16, bg: '#fff7ed', text: '#431407', accent: '#f97316', particle: '#fb923c', name: 'Evening' },
-    { time: 20, bg: '#18181b', text: '#e4e4e7', accent: '#a1a1aa', particle: '#d4d4d8', name: 'Night' },
-    { time: 24, bg: '#09090b', text: '#fafafa', accent: '#71717a', particle: '#a1a1aa', name: 'Midnight' } // Wrap around
+    { time: 0, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#a8a29e', name: 'Midnight' },
+    { time: 4, bg: '#1c1b1f', text: '#f5f5f4', accent: '#c7c2bb', particle: '#c7c2bb', name: 'Early Morning' },
+    { time: 8, bg: '#f7f4ef', text: '#1c1c1c', accent: '#b45309', particle: '#b45309', name: 'Morning' },
+    { time: 12, bg: '#ffffff', text: '#0f0f0f', accent: '#7c2d12', particle: '#7c2d12', name: 'Noon' },
+    { time: 16, bg: '#fff7ed', text: '#1a1a1a', accent: '#9a3412', particle: '#9a3412', name: 'Evening' },
+    { time: 20, bg: '#18181b', text: '#f4f4f5', accent: '#d6d3d1', particle: '#d6d3d1', name: 'Night' },
+    { time: 24, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#a8a29e', name: 'Midnight' } // Wrap around
 ]
 
 // Helper: Hex to RGB
