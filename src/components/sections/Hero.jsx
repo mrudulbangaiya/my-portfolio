@@ -5,10 +5,11 @@ import { MagneticButton } from "@/components/common/MagneticButton"
 import { profile } from "@/data/profile"
 import { fadeIn, slideUp, staggerContainer } from "@/utils/animations"
 import { ArrowDown, Sun, Moon, Globe } from "lucide-react"
-import ParticleCanvas from "@/components/canvas/ParticleCanvas"
+import ThreeParticleCanvas from "@/components/canvas/ThreeParticleCanvas"
 import { useCursor } from "@/context/CursorContext"
 import { useTheme } from "@/context/ThemeContext"
 import { useTime } from "@/context/TimeContext"
+import GodModeController from "@/components/common/GodModeController"
 
 export default function Hero() {
     const [hoverState, setHoverState] = useState('sphere')
@@ -41,6 +42,8 @@ export default function Hero() {
 
                 {/* Toggle Group */}
                 <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md p-1 rounded-full border border-border/50 shadow-sm">
+                    <GodModeController />
+                    <div className="w-px h-4 bg-border/50 mx-1" /> {/* Divider */}
                     <button
                         onClick={() => setThemeMode('light')}
                         className={`p-2 rounded-full transition-all duration-300 ${themeMode === 'light' ? 'bg-background shadow-sm text-yellow-500 scale-110' : 'text-muted-foreground hover:text-foreground'}`}
@@ -69,7 +72,7 @@ export default function Hero() {
             </div>
 
             {/* 1. Background Particles (Full Screen Absolute, but visual centered on right via Canvas logic) */}
-            <ParticleCanvas targetShape={hoverState} />
+            <ThreeParticleCanvas targetShape={hoverState} />
 
             {/* 2. Left Column: Main Content */}
             <motion.div

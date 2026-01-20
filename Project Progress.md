@@ -46,3 +46,19 @@
 - **Active Visual**: "The Nucleus" (Jupiter Rings Planet).
 - **Archived Visual**: "The Singularity" (Code preserved).
 - **Next Steps**: Proceed to Project Showcase Section.
+
+## 2026-01-20 (Session 4)
+- **Three.js Migration**:
+    - Ported Hero section from 2D Canvas to **Three.js (React Three Fiber)** for GPU acceleration and 3D depth.
+    - Implemented **Bloom Post-Processing** for neon/cyber glow.
+- **God Mode (Hand Tracking)**:
+    - Integrated **MediaPipe Hand Landmarker** for webcam-based interaction.
+    - **Gestures**:
+        - **Palm (✋)**: Forms/Restores the Planet.
+        - **Fist (✊)**: Explodes the Planet.
+        - **Twist 🔄**: Controls Time Speed (Clockwise = Forward, Counter-Clockwise = Backward).
+    - **Auto-Resume**: Time resumes automatically after 3s of no hand detection.
+- **Visual Polish**:
+    - **Smooth Morphing**: Fixed particle flying artifacts by centering the unused buffer.
+    - **Cyber-Bug Easter Egg**: Unused particles now gather in the bottom-right to form an animated "Bug" icon that crawls and jitters.
+
