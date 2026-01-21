@@ -107,24 +107,37 @@ const vertexShader = `
     // --- FINAL POSITION MIX ---
     vec3 finalPos = mix(currentNucleusPos, aTarget, uMorph);
     
+    // --- CULL HIDDEN PARTICLES ---
+    if (aIsSecondary > 1.5) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 0.0); // Clip (Hide)
+        return;
+    }
+
     // --- EXPLOSION LOGIC (Only affect MAIN particles) ---
     // aIsSecondary < 0.5 means Main Shape
     if (uExplode > 0.0 && aIsSecondary < 0.5) {
         float noiseVal = snoise(aBasePos * 0.2 + uTime * 0.1); 
         vec3 scatterDir = normalize(aBasePos);
         scatterDir += vec3(noiseVal, snoise(aBasePos.yzx), snoise(aBasePos.zxy));
-        finalPos += scatterDir * uExplode * 15.0; 
+        finalPos += scatterDir * uExplode * 30.0; 
     }
     
     // --- STAR ANIMATION (Secondary Shape) ---
-    if (aIsSecondary > 0.5 && uMorph > 0.5) {
-        // Subtle Drift
+    // Only animate ACTUAL stars (0.5 < sec < 1.5)
+    if (aIsSecondary > 0.5 && aIsSecondary < 1.5) {
+        // 1. Subtle Drift (Always active)
         finalPos.x += sin(uTime * 0.5 + aBasePos.y) * 0.5;
         finalPos.y += cos(uTime * 0.3 + aBasePos.x) * 0.5;
+
+        // 2. Dynamic Ring Scatter (Fix Horizontal Line)
+        // When uMorph increases (Icon Mode), scatter vertical position to break the line.
+        if (uMorph > 0.1) {
+             float verticalNoise = snoise(aBasePos * 0.5 + 10.0);
+             // Scatter up to 60.0 units height, scaled by morph progress
+             finalPos.y += verticalNoise * 60.0 * smoothstep(0.0, 1.0, uMorph);
+        }
         
-        // Twinkle (adjust point size z-depth or something?)
-        // The point size calculation below heavily depends on Z. 
-        // Let's add slight Z-pulse for twinkle.
+        // 3. Twinkle
         finalPos.z += sin(uTime * 2.0 + aBasePos.x * 10.0) * 1.5;
     }
     
@@ -132,7 +145,7 @@ const vertexShader = `
     gl_PointSize = size * uScale * (1000.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
   }
-`
+`;
 
 const fragmentShader = `
   varying vec3 vColor;
@@ -151,7 +164,7 @@ const fragmentShader = `
     finalColor = mix(finalColor, vec3(1.0), uMorph);
     gl_FragColor = vec4(finalColor, alpha);
   }
-`
+`;
 
 function ParticleSystem({ targetShape }) {
     const { time, setTime, setIsPlaying } = useTime()
@@ -169,11 +182,12 @@ function ParticleSystem({ targetShape }) {
     const nextSecondaryBuffer = useRef(null)
     const hangTimer = useRef(0)
 
-    const PARTICLE_COUNT = 8000
+    const PARTICLE_COUNT = 9000 // Increased for Rings
+    const SHAPE_BUDGET = 4000
     const GLOBE_RADIUS = 20
 
     // Data Gen (Memoized)
-    const { basePos, nucleusData, sizes, colors, targetPositions, secondaryAttr } = useMemo(() => {
+    const { basePos, nucleusData, sizes, colors, targetPositions, secondaryAttr, stableStars } = useMemo(() => {
         const pos = new Float32Array(PARTICLE_COUNT * 3)
         const nuc = new Float32Array(PARTICLE_COUNT * 4)
         const base = new Float32Array(PARTICLE_COUNT * 3)
@@ -182,10 +196,14 @@ function ParticleSystem({ targetShape }) {
         const tgt = new Float32Array(PARTICLE_COUNT * 3)
         const sec = new Float32Array(PARTICLE_COUNT)
 
-        const sphereCount = Math.floor(PARTICLE_COUNT * 0.6)
+        // Permanent Star Field Storage
+        const starPos = new Float32Array((PARTICLE_COUNT - SHAPE_BUDGET) * 3)
+
         const phi = Math.PI * (3 - Math.sqrt(5))
-        for (let i = 0; i < sphereCount; i++) {
-            const y = 1 - (i / (sphereCount - 1)) * 2
+
+        // 1. Generate Sphere for Shape Budget
+        for (let i = 0; i < SHAPE_BUDGET; i++) {
+            const y = 1 - (i / (SHAPE_BUDGET - 1)) * 2
             const rAtY = Math.sqrt(1 - y * y)
             const theta = phi * i
 
@@ -195,32 +213,74 @@ function ParticleSystem({ targetShape }) {
             const yPos = y * GLOBE_RADIUS
 
             base[i * 3] = x; base[i * 3 + 1] = yPos; base[i * 3 + 2] = z
-            nuc[i * 4 + 3] = 0
+            nuc[i * 4 + 3] = 0 // Nucleus Type: Sphere
             siz[i] = Math.random() * 0.3 + 0.1
+            sec[i] = 0 // Main Budget
         }
-        for (let i = sphereCount; i < PARTICLE_COUNT; i++) {
-            const angle = Math.random() * Math.PI * 2
-            const dist = GLOBE_RADIUS * (1.8 + Math.random() * 2.5)
-            const speed = GLOBE_RADIUS / dist
 
-            nuc[i * 4] = angle; nuc[i * 4 + 1] = dist; nuc[i * 4 + 2] = speed; nuc[i * 4 + 3] = 1
+        // 2. Generate Permanent Stars for Remainder (Hybrid: Standard + Rings)
+        let starIdx = 0
+        for (let i = SHAPE_BUDGET; i < PARTICLE_COUNT; i++) {
+            // Logic Split: First 3000 (Indices 4000-6999) = Standard Star Box
+            // Last 2000 (Indices 7000-8999) = New Rings
+            const isRing = i >= 7000
+
+            let x, y, z, nType
+
+            if (isRing) {
+                // --- RINGS (Saturn Style) ---
+                const angle = Math.random() * Math.PI * 2
+                const dist = GLOBE_RADIUS * (1.5 + Math.random() * 2.0)
+                x = Math.cos(angle) * dist
+                z = Math.sin(angle) * dist
+                y = (Math.random() - 0.5) * 5 // Flat
+                nType = 1 // Ring
+            } else {
+                // --- STAR BOX (Preserve Core) ---
+                const angle = Math.random() * Math.PI * 2
+                const dist = GLOBE_RADIUS * (1.8 + Math.random() * 2.5) // Original Dist
+                x = Math.cos(angle) * dist
+                z = Math.sin(angle) * dist
+                y = (Math.random() - 0.5) * 120 // Original Spread
+                nType = 1 // Star
+            }
+
+            base[i * 3] = x; base[i * 3 + 1] = y; base[i * 3 + 2] = z
+
+            // Store for re-use
+            starPos[starIdx * 3] = x
+            starPos[starIdx * 3 + 1] = y
+            starPos[starIdx * 3 + 2] = z
+            starIdx++
+
+            if (isRing) {
+                // Orbital Logic for Rings
+                nuc[i * 4] = Math.atan2(z, x)
+                nuc[i * 4 + 1] = Math.sqrt(x * x + z * z)
+                nuc[i * 4 + 2] = GLOBE_RADIUS / Math.sqrt(x * x + z * z)
+                nuc[i * 4 + 3] = 1
+            } else {
+                // Simple Drift for Stars (Original)
+                nuc[i * 4] = 0; nuc[i * 4 + 1] = 0; nuc[i * 4 + 2] = 0; nuc[i * 4 + 3] = 1
+            }
+
             siz[i] = Math.random() * 0.2 + 0.1
-
-            // Fix: Populate Base Pos for Rings so Explosion/Noise doesn't get NaN from normalize(0)
-            const x = Math.cos(angle) * dist
-            const z = Math.sin(angle) * dist
-            base[i * 3] = x; base[i * 3 + 1] = 0; base[i * 3 + 2] = z
+            sec[i] = 1 // Secondary: Star/Ring
         }
+
         tgt.fill(0)
-        return { nucleusData: nuc, basePos: base, sizes: siz, colors: col, targetPositions: tgt, secondaryAttr: sec }
+        return {
+            nucleusData: nuc, basePos: base, sizes: siz, colors: col,
+            targetPositions: tgt, secondaryAttr: sec, stableStars: starPos
+        }
     }, [])
 
     const shapesRef = useRef({
         sphere: {
-            pos: new Float32Array(PARTICLE_COUNT * 3).fill(0),
-            sec: new Float32Array(PARTICLE_COUNT).fill(0)
+            pos: basePos, // Initial Sphere State
+            sec: secondaryAttr
         },
-        MB: null, CODE: null, EMAIL: null, LI: null
+        MB: null, CODE: null, EMAIL: null, LI: null, MUSIC: null, GAMEPAD: null
     })
 
     // Init & Scan
@@ -240,7 +300,8 @@ function ParticleSystem({ targetShape }) {
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
 
             if (type === 'TEXT') {
-                const fontSize = Math.min(sw * 0.5, 120)
+                const isLong = textOrType.length > 5
+                const fontSize = Math.min(sw * (isLong ? 0.3 : 0.5), isLong ? 90 : 120)
                 ctx.font = `900 ${fontSize}px "Manrope", Arial, sans-serif`
                 ctx.fillText(textOrType, 0, 0)
             } else {
@@ -277,7 +338,6 @@ function ParticleSystem({ targetShape }) {
             const data = ctx.getImageData(0, 0, sw, sh).data
             const particles = []
             const gap = 1
-            // Keep Icon Offset (+25 Right)
             const scanXOffset = w > 1024 ? 25 : 0
 
             for (let y = 0; y < sh; y += gap) {
@@ -292,7 +352,8 @@ function ParticleSystem({ targetShape }) {
                     }
                 }
             }
-            return particles.sort(() => Math.random() - 0.5)
+            // Shuffle and Clamp to Budget
+            return particles.sort(() => Math.random() - 0.5).slice(0, SHAPE_BUDGET)
         }
 
         const fillBuffer = (mainParticles) => {
@@ -300,23 +361,27 @@ function ParticleSystem({ targetShape }) {
             const secBuffer = new Float32Array(PARTICLE_COUNT)
 
             for (let i = 0; i < PARTICLE_COUNT; i++) {
-                if (i < mainParticles.length) {
-                    posBuffer[i * 3] = mainParticles[i].x
-                    posBuffer[i * 3 + 1] = mainParticles[i].y
-                    posBuffer[i * 3 + 2] = mainParticles[i].z
-                    secBuffer[i] = 0 // Main Shape
+                if (i < SHAPE_BUDGET) {
+                    if (i < mainParticles.length) {
+                        // Actionable Shape Particle
+                        posBuffer[i * 3] = mainParticles[i].x
+                        posBuffer[i * 3 + 1] = mainParticles[i].y
+                        posBuffer[i * 3 + 2] = mainParticles[i].z
+                        secBuffer[i] = 0 // Main
+                    } else {
+                        // Unused Budget -> HIDDEN
+                        posBuffer[i * 3] = 0
+                        posBuffer[i * 3 + 1] = 0
+                        posBuffer[i * 3 + 2] = 0
+                        secBuffer[i] = 2 // Hidden
+                    }
                 } else {
-                    // STAR FIELD LOGIC
-                    // 3D Volume of stars
-                    const spreadX = 250
-                    const spreadY = 120
-                    const spreadZ = 60
-
-                    posBuffer[i * 3] = (Math.random() - 0.5) * spreadX
-                    posBuffer[i * 3 + 1] = (Math.random() - 0.5) * spreadY
-                    posBuffer[i * 3 + 2] = (Math.random() - 0.5) * spreadZ - 10
-
-                    secBuffer[i] = 1 // Type = Star
+                    // Star Field (Copy Stable)
+                    const starIdx = i - SHAPE_BUDGET
+                    posBuffer[i * 3] = stableStars[starIdx * 3]
+                    posBuffer[i * 3 + 1] = stableStars[starIdx * 3 + 1]
+                    posBuffer[i * 3 + 2] = stableStars[starIdx * 3 + 2]
+                    secBuffer[i] = 1 // Star
                 }
             }
             return { pos: posBuffer, sec: secBuffer }
@@ -324,10 +389,18 @@ function ParticleSystem({ targetShape }) {
 
         const initShapes = () => {
             try {
-                shapesRef.current.MB = fillBuffer(scan('TEXT', 'MB'))
+                // Hobbies Icons
                 shapesRef.current.CODE = fillBuffer(scan('TEXT', '</>'))
+                shapesRef.current.MUSIC = fillBuffer(scan('TEXT', '🎵'))
+                shapesRef.current.GAMEPAD = fillBuffer(scan('TEXT', '🎮'))
+
+                // Contact Icons
                 shapesRef.current.EMAIL = fillBuffer(scan('ICON', 'EMAIL'))
                 shapesRef.current.LI = fillBuffer(scan('ICON', 'LI'))
+
+                // MB key is now dynamic, but we can set a fallback if needed
+                // shapesRef.current.MB = shapesRef.current.CODE 
+
                 setShapesReady(true)
             } catch (e) {
                 console.error("Shape Init Failed", e)
@@ -351,16 +424,21 @@ function ParticleSystem({ targetShape }) {
     const [contactIndex, setContactIndex] = useState(0)
     const contactShapes = ['EMAIL', 'LI']
 
+    const [hobbiesIndex, setHobbiesIndex] = useState(0)
+    const hobbiesShapes = ['CODE', 'MUSIC', 'GAMEPAD']
+
+    // NEW: Frame-based timer to ensure pure IDLE time
+    const idleAccumulator = useRef(0)
+
+    // Reset indexes when shape changes
     useEffect(() => {
-        let interval
-        if (targetShape === 'contact') {
-            interval = setInterval(() => {
-                setContactIndex(prev => (prev + 1) % contactShapes.length)
-            }, 4000)
-        } else {
+        if (targetShape !== 'contact') {
             setContactIndex(0)
         }
-        return () => clearInterval(interval)
+        if (targetShape !== 'MB') {
+            setHobbiesIndex(0)
+        }
+        idleAccumulator.current = 0
     }, [targetShape])
 
     const prevKeyRef = useRef('sphere')
@@ -371,6 +449,7 @@ function ParticleSystem({ targetShape }) {
 
         let newKey = targetShape
         if (newKey === 'contact') newKey = contactShapes[contactIndex]
+        if (newKey === 'MB') newKey = hobbiesShapes[hobbiesIndex]
 
         if (newKey === currentKeyRef.current) return
 
@@ -400,7 +479,7 @@ function ParticleSystem({ targetShape }) {
             transitionState.current = 'IDLE'
         }
 
-    }, [contactIndex, targetShape, shapesReady])
+    }, [contactIndex, hobbiesIndex, targetShape, shapesReady])
 
     useFrame((state, delta) => {
         const material = pointsRef.current.material
@@ -412,6 +491,25 @@ function ParticleSystem({ targetShape }) {
         const targetMorph = (targetShape === 'sphere' || isGodModeActive) ? 0.0 : 1.0
         const currentExplode = material.uniforms.uExplode.value
 
+        // --- CYCLE LOGIC: Only trigger next icon when IDLE ---
+        const isCycling = (targetShape === 'contact' || targetShape === 'MB') &&
+            transitionState.current === 'IDLE' &&
+            !isHandExploding
+
+        if (isCycling) {
+            idleAccumulator.current += delta
+            if (idleAccumulator.current > 3.0) { // Wait 3s AFTER settling
+                if (targetShape === 'contact') {
+                    setContactIndex(prev => (prev + 1) % contactShapes.length)
+                } else if (targetShape === 'MB') {
+                    setHobbiesIndex(prev => (prev + 1) % hobbiesShapes.length)
+                }
+                idleAccumulator.current = 0
+            }
+        } else {
+            idleAccumulator.current = 0
+        }
+
         if (transitionState.current === 'EXPLODING') {
             material.uniforms.uExplode.value = THREE.MathUtils.lerp(currentExplode, 1.2, 0.1)
             if (currentExplode > 1.1) {
@@ -421,7 +519,7 @@ function ParticleSystem({ targetShape }) {
         }
         else if (transitionState.current === 'HANG') {
             hangTimer.current += 1
-            if (hangTimer.current > 20) {
+            if (hangTimer.current > 2) { // Minimal wait for buffer swap (was 20)
                 // ... (buffer swap logic unchanged)
                 if (nextShapeBuffer.current) {
                     const geo = pointsRef.current.geometry
@@ -441,7 +539,7 @@ function ParticleSystem({ targetShape }) {
         }
         else if (transitionState.current === 'IMPLODING') {
             material.uniforms.uExplode.value = THREE.MathUtils.lerp(currentExplode, 0.0, 0.03)
-            if (currentExplode < 0.01) {
+            if (currentExplode < 0.01) { // Smooth finish (was 0.05)
                 material.uniforms.uExplode.value = 0.0
                 transitionState.current = 'IDLE'
             }
