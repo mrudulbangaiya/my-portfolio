@@ -83,3 +83,12 @@
     - **Scale**: Increased Planet scale to `1.15` (Sweet spot).
 - **Code Optimization**:
     - Conducted a full review of `Hero.jsx` and `ThreeParticleCanvas.jsx`. Confirmed Vertex Shader-heavy approach is highly optimized.
+
+## 2026-01-21 (Session 6)
+- **Visual Overhaul (The "Blue Planet")**:
+    - **Blue Theme Integration**: Implemented a comprehensive **Blue Color Spectrum** for the planet across all time zones (Day/Night) via `ThemeContext`.
+    - **Backtracking**: Attempted to solidify the core but reverted to the Cylindrical Star Box based on user feedback to maintain the "Floating Core" aesthetic.
+- **God Mode Fixes**:
+    - **Global Destruction**: Fixed an issue where the "Fist" gesture only exploded the core. Now, **Rings** and the **Star Box** also explode.
+- **Physics Refinement**:
+    - **Rotational Sync**: Linked the Ring System rotation to the Planet Rotation (`uRotationY`). Now, dragging the planet rotates the rings naturally.
