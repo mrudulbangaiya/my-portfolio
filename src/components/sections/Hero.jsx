@@ -10,6 +10,7 @@ import { useCursor } from "@/context/CursorContext"
 import { useTheme } from "@/context/ThemeContext"
 import { useTime } from "@/context/TimeContext"
 import GodModeController from "@/components/common/GodModeController"
+import OnboardingOverlay from "@/components/common/OnboardingOverlay"
 
 export default function Hero() {
     const [hoverState, setHoverState] = useState('sphere')
@@ -36,7 +37,9 @@ export default function Hero() {
     return (
         <section className="relative h-screen w-full overflow-hidden bg-background text-foreground grid grid-cols-1 lg:grid-cols-2">
 
-            {/* Theme Toggle - Top Right */}
+            {/* Tutorial Overlay */}
+            <OnboardingOverlay />
+
             {/* Theme Toggle & Clock - Top Right */}
             <div className="absolute top-6 right-6 z-50 flex flex-col items-end gap-4 pointer-events-auto">
 

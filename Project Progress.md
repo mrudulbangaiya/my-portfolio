@@ -92,3 +92,12 @@
     - **Global Destruction**: Fixed an issue where the "Fist" gesture only exploded the core. Now, **Rings** and the **Star Box** also explode.
 - **Physics Refinement**:
     - **Rotational Sync**: Linked the Ring System rotation to the Planet Rotation (`uRotationY`). Now, dragging the planet rotates the rings naturally.
+- **Visual Polish**:
+    - **Light Theme Visibility**: Fixed an issue where icons were invisible (white-on-white) in Light Mode. Implemented dynamic `uColorMorph` to switch icons to **Black** during the day and **White** at night.
+    - **Time Stop Physics**: Updated the "Time Stop" gesture (Stable Hand) to completely **Freeze Rings**. Previously, rings kept rotating; now, `uTime` increment is paused, stopping all internal mechanics (Orbit, Twinkle, Drift).
+    - **God Mode "Float"**: Improved the **Zero-G Floating Cloud** effect by slowing down the animation for a calmer look and massively increasing the spread (`70.0` scale) to ensure particles fill the entire screen, eliminating empty corners.
+- **Onboarding Experience**:
+    - **Tutorial Overlay**: Implemented a "Video Game Style" popup tutorial (`OnboardingOverlay`) that appears for first-time visitors (tracked via LocalStorage).
+        - **Refinement**: Upgraded to a **"Cloud Message" / Tooltip** style with a speech bubble tail for better context (positioning `top-24`).
+        - **Interactivity**: Added a direct **"Enable Auto"** button within the tutorial to encourage testing the dynamic theme.
+    - **Default State**: Enforced **Dark Mode** as the default theme on every reload to ensure the premium "Midnight" aesthetic is the first impression.

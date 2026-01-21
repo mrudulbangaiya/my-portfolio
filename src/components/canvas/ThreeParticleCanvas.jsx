@@ -113,12 +113,26 @@ const vertexShader = `
         return;
     }
 
-    // --- EXPLOSION LOGIC (Affect ALL particles) ---
+    // --- EXPLOSION LOGIC (Calm Wide-Spread Float) ---
     if (uExplode > 0.0) {
-        float noiseVal = snoise(aBasePos * 0.2 + uTime * 0.1); 
-        vec3 scatterDir = normalize(aBasePos);
-        scatterDir += vec3(noiseVal, snoise(aBasePos.yzx), snoise(aBasePos.zxy));
-        finalPos += scatterDir * uExplode * 30.0; 
+        // 1. Slow Down Motion drastically (0.2 -> 0.05)
+        float t = uTime * 0.05;
+        
+        // 2. Wide Noise Distribution
+        float nX = snoise(aBasePos * 0.1 + vec3(0.0, t, 0.0));
+        float nY = snoise(aBasePos * 0.1 + vec3(43.0, t, 0.0)); 
+        float nZ = snoise(aBasePos * 0.1 + vec3(0.0, 0.0, t));
+
+        // 3. Gentle Drift
+        vec3 drift = vec3(
+            sin(t * 2.0 + aBasePos.y),
+            cos(t * 1.5 + aBasePos.z),
+            sin(t * 2.2 + aBasePos.x)
+        );
+
+        // 4. Massive Scale (20.0 -> 70.0) to fill corners
+        vec3 floatOffset = vec3(nX, nY, nZ) + drift * 0.3;
+        finalPos += floatOffset * uExplode * 70.0; 
     }
     
     // --- STAR ANIMATION (Secondary Shape) ---
@@ -154,6 +168,7 @@ const fragmentShader = `
   varying float vType;
   uniform vec3 uColorCore;
   uniform vec3 uColorRing;
+  uniform vec3 uColorMorph;
   uniform float uMorph;
   
   void main() {
@@ -163,13 +178,13 @@ const fragmentShader = `
     float alpha = 1.0 - smoothstep(0.4, 0.5, dist);
     vec3 finalColor = uColorCore;
     if (vType > 0.5) finalColor = uColorRing; 
-    finalColor = mix(finalColor, vec3(1.0), uMorph);
+    finalColor = mix(finalColor, uColorMorph, uMorph);
     gl_FragColor = vec4(finalColor, alpha);
   }
 `;
 
 function ParticleSystem({ targetShape }) {
-    const { time, setTime, setIsPlaying } = useTime()
+    const { time, setTime, setIsPlaying, isPlaying } = useTime()
     const theme = useTheme()
     const { isExploding: isHandExploding, isGodModeActive } = useGodMode()
     const { gl } = useThree()
@@ -420,6 +435,7 @@ function ParticleSystem({ targetShape }) {
         uScale: { value: 1.15 }, // Smaller Scale (was 1.3)
         uColorCore: { value: new THREE.Color('#cbd5e1') },
         uColorRing: { value: new THREE.Color('#020617') },
+        uColorMorph: { value: new THREE.Color('#ffffff') }, // Init with White
         uGlobalOffset: { value: new THREE.Vector3(window.innerWidth > 1024 ? 18 : 0, 5, 0) } // Shift Left (18)
     }), [])
 
@@ -485,7 +501,9 @@ function ParticleSystem({ targetShape }) {
 
     useFrame((state, delta) => {
         const material = pointsRef.current.material
-        material.uniforms.uTime.value += delta
+        if (isPlaying || isHandExploding) {
+            material.uniforms.uTime.value += delta
+        }
         const dayProgress = time / 24
         material.uniforms.uRotationY.value = dayProgress * Math.PI * 2
 
@@ -565,8 +583,12 @@ function ParticleSystem({ targetShape }) {
         const coreTarget = new THREE.Color(theme.particle)
         const ringTarget = isNight ? new THREE.Color('#ffffff') : new THREE.Color('#020617')
 
+        // Morph Color: Light Mode -> Black, Dark Mode -> White
+        const morphTarget = isNight ? new THREE.Color('#ffffff') : new THREE.Color('#000000')
+
         material.uniforms.uColorCore.value.lerp(coreTarget, 0.05)
         material.uniforms.uColorRing.value.lerp(ringTarget, 0.05)
+        material.uniforms.uColorMorph.value.lerp(morphTarget, 0.1)
     })
 
     // --- DRAG LOGIC (Canvas-wide) ---

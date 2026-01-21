@@ -40,7 +40,7 @@ const interpolateColorString = (color1, color2, factor) => {
 
 export const ThemeProvider = ({ children }) => {
     const { time } = useTime()
-    const [themeMode, setThemeMode] = useState('auto') // 'auto' | 'light' | 'dark'
+    const [themeMode, setThemeMode] = useState('dark') // Default to Dark Mode
 
     // Calculate Current Colors
     const currentTheme = useMemo(() => {
