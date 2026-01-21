@@ -104,28 +104,28 @@ const vertexShader = `
         currentNucleusPos = rotated;
     }
     
-    // --- Final Position (Morph) ---
+    // --- FINAL POSITION MIX ---
     vec3 finalPos = mix(currentNucleusPos, aTarget, uMorph);
     
-    // --- EXPLOSION LOGIC ---
-    if (uExplode > 0.0) {
+    // --- EXPLOSION LOGIC (Only affect MAIN particles) ---
+    // aIsSecondary < 0.5 means Main Shape
+    if (uExplode > 0.0 && aIsSecondary < 0.5) {
         float noiseVal = snoise(aBasePos * 0.2 + uTime * 0.1); 
         vec3 scatterDir = normalize(aBasePos);
         scatterDir += vec3(noiseVal, snoise(aBasePos.yzx), snoise(aBasePos.zxy));
         finalPos += scatterDir * uExplode * 15.0; 
     }
     
-    // --- BUG ANIMATION (Secondary Shape) ---
-    if (aIsSecondary > 0.5 && uMorph > 0.5 && uExplode < 0.1) {
-        // Simple "Crawl" or "Jitter"
-        float speed = 8.0;
-        float amp = 1.0;
-        // Wiggle legs/body based on position
-        float wiggle = sin(aBasePos.x * 2.0 + uTime * speed) * amp;
-        float bounce = abs(sin(uTime * speed * 4.0)) * 0.3;
+    // --- STAR ANIMATION (Secondary Shape) ---
+    if (aIsSecondary > 0.5 && uMorph > 0.5) {
+        // Subtle Drift
+        finalPos.x += sin(uTime * 0.5 + aBasePos.y) * 0.5;
+        finalPos.y += cos(uTime * 0.3 + aBasePos.x) * 0.5;
         
-        finalPos.x += wiggle;
-        finalPos.y += bounce;
+        // Twinkle (adjust point size z-depth or something?)
+        // The point size calculation below heavily depends on Z. 
+        // Let's add slight Z-pulse for twinkle.
+        finalPos.z += sin(uTime * 2.0 + aBasePos.x * 10.0) * 1.5;
     }
     
     vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
@@ -157,7 +157,7 @@ function ParticleSystem({ targetShape }) {
     const { time, setTime, setIsPlaying } = useTime()
     const theme = useTheme()
     const { isExploding: isHandExploding, isGodModeActive } = useGodMode()
-    const { gl } = useThree() // Get R3F Renderer
+    const { gl } = useThree()
 
     const pointsRef = useRef()
     const dragRef = useRef({ isDown: false, startX: 0, startTime: 0 })
@@ -166,7 +166,7 @@ function ParticleSystem({ targetShape }) {
     // Animation Controls
     const transitionState = useRef('IDLE')
     const nextShapeBuffer = useRef(null)
-    const nextSecondaryBuffer = useRef(null) // NEW: Buffer for Secondary Attribute
+    const nextSecondaryBuffer = useRef(null)
     const hangTimer = useRef(0)
 
     const PARTICLE_COUNT = 8000
@@ -180,7 +180,7 @@ function ParticleSystem({ targetShape }) {
         const siz = new Float32Array(PARTICLE_COUNT)
         const col = new Float32Array(PARTICLE_COUNT * 3)
         const tgt = new Float32Array(PARTICLE_COUNT * 3)
-        const sec = new Float32Array(PARTICLE_COUNT) // init with 0
+        const sec = new Float32Array(PARTICLE_COUNT)
 
         const sphereCount = Math.floor(PARTICLE_COUNT * 0.6)
         const phi = Math.PI * (3 - Math.sqrt(5))
@@ -255,29 +255,22 @@ function ParticleSystem({ targetShape }) {
                     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(0, y + ih * 0.5); ctx.lineTo(x + iw, y); ctx.stroke()
                 } else if (textOrType === 'LI') {
                     const s = size * 1.2; const x = -s / 2; const y = -s / 2; const r = s * 0.2
-                    ctx.beginPath(); ctx.roundRect(x, y, s, s, r); ctx.stroke()
+                    // Safe Rounded Rect
+                    ctx.beginPath()
+                    ctx.moveTo(x + r, y)
+                    ctx.lineTo(x + s - r, y)
+                    ctx.quadraticCurveTo(x + s, y, x + s, y + r)
+                    ctx.lineTo(x + s, y + s - r)
+                    ctx.quadraticCurveTo(x + s, y + s, x + s - r, y + s)
+                    ctx.lineTo(x + r, y + s)
+                    ctx.quadraticCurveTo(x, y + s, x, y + s - r)
+                    ctx.lineTo(x, y + r)
+                    ctx.quadraticCurveTo(x, y, x + r, y)
+                    ctx.closePath()
+                    ctx.stroke()
+
                     ctx.font = `700 ${s * 0.6}px "Manrope", Arial, sans-serif`
                     ctx.fillText('in', 0, s * 0.05)
-                } else if (textOrType === 'BUG') {
-                    // Simple Beetle Shape logic
-                    const s = size;
-                    ctx.fillStyle = 'white'
-                    // Body
-                    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.3, s * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-                    // Head
-                    ctx.beginPath(); ctx.arc(0, -s * 0.45, s * 0.2, 0, Math.PI * 2); ctx.fill();
-                    // Legs (3 pairs)
-                    ctx.lineWidth = s * 0.08
-                    ctx.beginPath();
-                    // Left
-                    ctx.moveTo(-s * 0.2, -s * 0.2); ctx.lineTo(-s * 0.6, -s * 0.3);
-                    ctx.moveTo(-s * 0.3, 0); ctx.lineTo(-s * 0.7, 0);
-                    ctx.moveTo(-s * 0.2, s * 0.2); ctx.lineTo(-s * 0.6, s * 0.3);
-                    // Right
-                    ctx.moveTo(s * 0.2, -s * 0.2); ctx.lineTo(s * 0.6, -s * 0.3);
-                    ctx.moveTo(s * 0.3, 0); ctx.lineTo(s * 0.7, 0);
-                    ctx.moveTo(s * 0.2, s * 0.2); ctx.lineTo(s * 0.6, s * 0.3);
-                    ctx.stroke();
                 }
             }
 
@@ -302,7 +295,7 @@ function ParticleSystem({ targetShape }) {
             return particles.sort(() => Math.random() - 0.5)
         }
 
-        const fillBuffer = (mainParticles, secondaryParticles = []) => {
+        const fillBuffer = (mainParticles) => {
             const posBuffer = new Float32Array(PARTICLE_COUNT * 3)
             const secBuffer = new Float32Array(PARTICLE_COUNT)
 
@@ -312,38 +305,33 @@ function ParticleSystem({ targetShape }) {
                     posBuffer[i * 3 + 1] = mainParticles[i].y
                     posBuffer[i * 3 + 2] = mainParticles[i].z
                     secBuffer[i] = 0 // Main Shape
-                } else if (secondaryParticles.length > 0) {
-                    // Fill tail with Bug
-                    const bugIdx = (i - mainParticles.length) % secondaryParticles.length
-                    // Offset Bug to lower right
-                    const bug = secondaryParticles[bugIdx]
-                    // Adjust offset based on screen?? Let's hardcode a nice spot.
-                    // Main shapes are centered. Bug should be to the side.
-                    // Let's put it at X + 40, Y - 30
-                    const offsetX = 40
-                    const offsetY = -30
-
-                    posBuffer[i * 3] = bug.x + offsetX
-                    posBuffer[i * 3 + 1] = bug.y + offsetY
-                    posBuffer[i * 3 + 2] = bug.z
-                    secBuffer[i] = 1 // Secondary Shape (Animated)
                 } else {
-                    // Default Center
-                    posBuffer[i * 3] = 0; posBuffer[i * 3 + 1] = 0; posBuffer[i * 3 + 2] = 0
-                    secBuffer[i] = 0
+                    // STAR FIELD LOGIC
+                    // 3D Volume of stars
+                    const spreadX = 250
+                    const spreadY = 120
+                    const spreadZ = 60
+
+                    posBuffer[i * 3] = (Math.random() - 0.5) * spreadX
+                    posBuffer[i * 3 + 1] = (Math.random() - 0.5) * spreadY
+                    posBuffer[i * 3 + 2] = (Math.random() - 0.5) * spreadZ - 10
+
+                    secBuffer[i] = 1 // Type = Star
                 }
             }
             return { pos: posBuffer, sec: secBuffer }
         }
 
         const initShapes = () => {
-            const bugParticles = scan('ICON', 'BUG')
-
-            shapesRef.current.MB = fillBuffer(scan('TEXT', 'MB'), bugParticles)
-            shapesRef.current.CODE = fillBuffer(scan('TEXT', '</>'), bugParticles)
-            shapesRef.current.EMAIL = fillBuffer(scan('ICON', 'EMAIL'), bugParticles)
-            shapesRef.current.LI = fillBuffer(scan('ICON', 'LI'), bugParticles)
-            setShapesReady(true)
+            try {
+                shapesRef.current.MB = fillBuffer(scan('TEXT', 'MB'))
+                shapesRef.current.CODE = fillBuffer(scan('TEXT', '</>'))
+                shapesRef.current.EMAIL = fillBuffer(scan('ICON', 'EMAIL'))
+                shapesRef.current.LI = fillBuffer(scan('ICON', 'LI'))
+                setShapesReady(true)
+            } catch (e) {
+                console.error("Shape Init Failed", e)
+            }
         }
 
         setTimeout(initShapes, 500)
@@ -357,6 +345,7 @@ function ParticleSystem({ targetShape }) {
         uScale: { value: 1.0 },
         uColorCore: { value: new THREE.Color('#cbd5e1') },
         uColorRing: { value: new THREE.Color('#020617') },
+        uGlobalOffset: { value: new THREE.Vector3(window.innerWidth > 1024 ? 25 : 0, 0, 0) }
     }), [])
 
     const [contactIndex, setContactIndex] = useState(0)
@@ -389,15 +378,12 @@ function ParticleSystem({ targetShape }) {
         currentKeyRef.current = newKey
 
         const geo = pointsRef.current?.geometry
-        // nextBuf is now { pos, sec }
         const nextData = shapesRef.current[newKey] || shapesRef.current.sphere
 
         if (prevKeyRef.current === 'sphere') {
-            // Direct Morph (Sphere to Shape)
             geo.attributes.aTarget.array.set(nextData.pos)
             geo.attributes.aTarget.needsUpdate = true
 
-            // Also update Secondary Attribute immediately
             if (geo.attributes.aIsSecondary) {
                 geo.attributes.aIsSecondary.array.set(nextData.sec)
                 geo.attributes.aIsSecondary.needsUpdate = true
@@ -406,29 +392,12 @@ function ParticleSystem({ targetShape }) {
             transitionState.current = 'IDLE'
         }
         else if (currentKeyRef.current !== 'sphere') {
-            // Shape to Shape -> Explode First
             nextShapeBuffer.current = nextData.pos
             nextSecondaryBuffer.current = nextData.sec
             transitionState.current = 'EXPLODING'
         }
         else {
-            // Shape to Sphere (Back)
-            // Sphere data has pos=0, sec=0.
-            // But we can reset to 0 manually or use sphere buffer
-            // Sphere buffer at init is 0.
-            // But if we morph back, we want the "unused" particles to go to 0.
-            // Our Sphere buffer has 0 everywhere.
-            // So logic holds.
             transitionState.current = 'IDLE'
-            // Wait, standard morph to sphere handled by uMorph going to 0.
-            // But we need to ensure the attributes are clean?
-            // Actually uMorph interpolates betwen Nucleus(Sphere) and Target.
-            // If Target is still OldShape, and uMorph goes to 0 (Sphere), it looks fine.
-            // But we want to swap the 'Target' to Sphere eventually?
-            // Currently logic relies on uMorph.
-            // If uMorph is 0, we see Nucleus.
-            // If we swap Target while uMorph is 0, no visual change.
-            // Good.
         }
 
     }, [contactIndex, targetShape, shapesReady])
@@ -439,7 +408,7 @@ function ParticleSystem({ targetShape }) {
         const dayProgress = time / 24
         material.uniforms.uRotationY.value = dayProgress * Math.PI * 2
 
-        // const { isGodModeActive } = useGodMode() // REMOVED: Invalid Hook Call
+        // const { isGodModeActive } = useGodMode() 
         const targetMorph = (targetShape === 'sphere' || isGodModeActive) ? 0.0 : 1.0
         const currentExplode = material.uniforms.uExplode.value
 
@@ -453,6 +422,7 @@ function ParticleSystem({ targetShape }) {
         else if (transitionState.current === 'HANG') {
             hangTimer.current += 1
             if (hangTimer.current > 20) {
+                // ... (buffer swap logic unchanged)
                 if (nextShapeBuffer.current) {
                     const geo = pointsRef.current.geometry
                     geo.attributes.aTarget.array.set(nextShapeBuffer.current)
@@ -494,6 +464,7 @@ function ParticleSystem({ targetShape }) {
         const isNight = ['Midnight', 'Night', 'Early Morning'].includes(theme.name)
         const coreTarget = isNight ? new THREE.Color('#1e293b') : new THREE.Color('#cbd5e1')
         const ringTarget = isNight ? new THREE.Color('#ffffff') : new THREE.Color('#020617')
+
         material.uniforms.uColorCore.value.lerp(coreTarget, 0.05)
         material.uniforms.uColorRing.value.lerp(ringTarget, 0.05)
     })
