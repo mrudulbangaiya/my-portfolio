@@ -62,3 +62,24 @@
     - **Smooth Morphing**: Fixed particle flying artifacts by centering the unused buffer.
     - **Cyber-Bug Easter Egg**: Unused particles now gather in the bottom-right to form an animated "Bug" icon that crawls and jitters.
 
+
+## 2026-01-21 (Session 5)
+- **Ring Restoration (The "Additive" Strategy)**:
+    - **Backtracking**: Reverted the controversial "Hybrid Distribution" to restore the user-preferred "Random Star Box".
+    - **Resolution**: Implemented an additive `9000 Particle` system:
+        - **3000** for Star Box (Core).
+        - **2000** dedicated to Rings (Doubled density).
+        - **4000** for Shape Morphing.
+- **Visual Glitch Fixing**:
+    - **"Horizontal Line" Issue**: Fixed an artifact where flat rings looked like a hard line during icon formation.
+    - **Solution**: Implemented **Dynamic Vertical Scatter** in the Vertex Shader that "explodes" the rings into a star cloud when morphing.
+- **Physics & Animation Refinement**:
+    - **Orbit Mechanics**: Detached ring rotation from the Day Cycle. Now uses `uTime` for continuous, smooth mechanical rotation.
+    - **Stabilization**: Disabled "Star Drift" wobble for ring particles to ensure they fly straight.
+    - **Cinematic Tilt**: Experimented with steep angles but reverted to the classic 0.45/0.15 tilt per user preference.
+- **Layout Tuning**:
+    - **Global Positioning**: Enabled `uGlobalOffset` to shift the Planet Right/Up.
+    - **Icon Placement**: Tuned offsets to place icons Left/Down, creating a balanced asymmetry.
+    - **Scale**: Increased Planet scale to `1.15` (Sweet spot).
+- **Code Optimization**:
+    - Conducted a full review of `Hero.jsx` and `ThreeParticleCanvas.jsx`. Confirmed Vertex Shader-heavy approach is highly optimized.

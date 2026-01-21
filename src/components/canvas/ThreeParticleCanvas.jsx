@@ -83,7 +83,7 @@ const vertexShader = `
         float angle = aNucleus.x;
         float radius = aNucleus.y;
         float speed = aNucleus.z;
-        float currentAngle = angle + (uRotationY * 0.5 * speed);
+        float currentAngle = angle + (uTime * 0.1 * speed); // Use uTime for continuous orbit (was uRotationY)
         float tiltX = 0.45; 
         float tiltZ = 0.15; 
         float ox = cos(currentAngle) * radius;
@@ -125,9 +125,11 @@ const vertexShader = `
     // --- STAR ANIMATION (Secondary Shape) ---
     // Only animate ACTUAL stars (0.5 < sec < 1.5)
     if (aIsSecondary > 0.5 && aIsSecondary < 1.5) {
-        // 1. Subtle Drift (Always active)
-        finalPos.x += sin(uTime * 0.5 + aBasePos.y) * 0.5;
-        finalPos.y += cos(uTime * 0.3 + aBasePos.x) * 0.5;
+        // 1. Subtle Drift (Only for Static Stars, not Rings)
+        if (aNucleus.w < 0.5 || aNucleus.z < 0.01) { 
+             finalPos.x += sin(uTime * 0.5 + aBasePos.y) * 0.5;
+             finalPos.y += cos(uTime * 0.3 + aBasePos.x) * 0.5;
+        }
 
         // 2. Dynamic Ring Scatter (Fix Horizontal Line)
         // When uMorph increases (Icon Mode), scatter vertical position to break the line.
@@ -141,7 +143,8 @@ const vertexShader = `
         finalPos.z += sin(uTime * 2.0 + aBasePos.x * 10.0) * 1.5;
     }
     
-    vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
+    // Apply Global Offset (Reposition Planet/Icons)
+    vec4 mvPosition = modelViewMatrix * vec4(finalPos + uGlobalOffset, 1.0);
     gl_PointSize = size * uScale * (1000.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
   }
@@ -338,15 +341,15 @@ function ParticleSystem({ targetShape }) {
             const data = ctx.getImageData(0, 0, sw, sh).data
             const particles = []
             const gap = 1
-            const scanXOffset = w > 1024 ? 25 : 0
+            const scanXOffset = 0 // Removed duplicate offset (uGlobalOffset handles X)
 
             for (let y = 0; y < sh; y += gap) {
                 for (let x = 0; x < sw; x += gap) {
                     const idx = (y * sw + x) * 4
                     if (data[idx] > 50) {
                         particles.push({
-                            x: ((x - sw / 2) * (1 / scale) * 0.08) + scanXOffset,
-                            y: -(y - sh / 2) * (1 / scale) * 0.08,
+                            x: ((x - sw / 2) * (1 / scale) * 0.05) + scanXOffset,
+                            y: (-(y - sh / 2) * (1 / scale) * 0.05) - 5.0, // Shift Down (-5.0)
                             z: 0
                         })
                     }
@@ -415,10 +418,10 @@ function ParticleSystem({ targetShape }) {
         uRotationY: { value: 0 },
         uMorph: { value: 0 },
         uExplode: { value: 0 },
-        uScale: { value: 1.0 },
+        uScale: { value: 1.15 }, // Smaller Scale (was 1.3)
         uColorCore: { value: new THREE.Color('#cbd5e1') },
         uColorRing: { value: new THREE.Color('#020617') },
-        uGlobalOffset: { value: new THREE.Vector3(window.innerWidth > 1024 ? 25 : 0, 0, 0) }
+        uGlobalOffset: { value: new THREE.Vector3(window.innerWidth > 1024 ? 18 : 0, 5, 0) } // Shift Left (18)
     }), [])
 
     const [contactIndex, setContactIndex] = useState(0)
