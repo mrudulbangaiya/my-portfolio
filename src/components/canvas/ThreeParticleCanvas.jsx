@@ -83,7 +83,7 @@ const vertexShader = `
         float angle = aNucleus.x;
         float radius = aNucleus.y;
         float speed = aNucleus.z;
-        float currentAngle = angle + (uTime * 0.1 * speed); // Use uTime for continuous orbit (was uRotationY)
+        float currentAngle = angle + (uTime * 0.1 * speed) + uRotationY; // Sync with Planet Rotation
         float tiltX = 0.45; 
         float tiltZ = 0.15; 
         float ox = cos(currentAngle) * radius;
@@ -113,9 +113,8 @@ const vertexShader = `
         return;
     }
 
-    // --- EXPLOSION LOGIC (Only affect MAIN particles) ---
-    // aIsSecondary < 0.5 means Main Shape
-    if (uExplode > 0.0 && aIsSecondary < 0.5) {
+    // --- EXPLOSION LOGIC (Affect ALL particles) ---
+    if (uExplode > 0.0) {
         float noiseVal = snoise(aBasePos * 0.2 + uTime * 0.1); 
         vec3 scatterDir = normalize(aBasePos);
         scatterDir += vec3(noiseVal, snoise(aBasePos.yzx), snoise(aBasePos.zxy));
@@ -563,7 +562,7 @@ function ParticleSystem({ targetShape }) {
         )
 
         const isNight = ['Midnight', 'Night', 'Early Morning'].includes(theme.name)
-        const coreTarget = isNight ? new THREE.Color('#1e293b') : new THREE.Color('#cbd5e1')
+        const coreTarget = new THREE.Color(theme.particle)
         const ringTarget = isNight ? new THREE.Color('#ffffff') : new THREE.Color('#020617')
 
         material.uniforms.uColorCore.value.lerp(coreTarget, 0.05)

@@ -5,13 +5,13 @@ const ThemeContext = createContext()
 
 // Color Stages
 const THEME_STAGES = [
-    { time: 0, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#a8a29e', name: 'Midnight' },
-    { time: 4, bg: '#1c1b1f', text: '#f5f5f4', accent: '#c7c2bb', particle: '#c7c2bb', name: 'Early Morning' },
-    { time: 8, bg: '#f7f4ef', text: '#1c1c1c', accent: '#b45309', particle: '#b45309', name: 'Morning' },
-    { time: 12, bg: '#ffffff', text: '#0f0f0f', accent: '#7c2d12', particle: '#7c2d12', name: 'Noon' },
-    { time: 16, bg: '#fff7ed', text: '#1a1a1a', accent: '#9a3412', particle: '#9a3412', name: 'Evening' },
-    { time: 20, bg: '#18181b', text: '#f4f4f5', accent: '#d6d3d1', particle: '#d6d3d1', name: 'Night' },
-    { time: 24, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#a8a29e', name: 'Midnight' } // Wrap around
+    { time: 0, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#1e3a8a', name: 'Midnight' }, // Deep Blue
+    { time: 4, bg: '#1c1b1f', text: '#f5f5f4', accent: '#c7c2bb', particle: '#3b82f6', name: 'Early Morning' }, // Blue
+    { time: 8, bg: '#f7f4ef', text: '#1c1c1c', accent: '#b45309', particle: '#60a5fa', name: 'Morning' }, // Light Blue
+    { time: 12, bg: '#ffffff', text: '#0f0f0f', accent: '#7c2d12', particle: '#0ea5e9', name: 'Noon' }, // Sky Blue
+    { time: 16, bg: '#fff7ed', text: '#1a1a1a', accent: '#9a3412', particle: '#2563eb', name: 'Evening' }, // Royal Blue
+    { time: 20, bg: '#18181b', text: '#f4f4f5', accent: '#d6d3d1', particle: '#172554', name: 'Night' }, // Dark Blue
+    { time: 24, bg: '#0f0f11', text: '#fafafa', accent: '#a8a29e', particle: '#1e3a8a', name: 'Midnight' } // Wrap around
 ]
 
 // Helper: Hex to RGB
